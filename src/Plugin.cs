@@ -2,9 +2,11 @@
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.Mono;
-using BusinessLayoutSets;
+using BigAmbitions.Items;
 using Entities;
 using HarmonyLib;
+using PlayerActivity;
+
 
 namespace BA.src;
 
@@ -19,7 +21,6 @@ public class Plugin : BaseUnityPlugin
         // Plugin startup logic
         Logger = base.Logger;
 
-
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
         harmony.PatchAll(typeof(Patches));
 
@@ -32,9 +33,15 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(WorkoutVarietyCustomerDemand), nameof(WorkoutVarietyCustomerDemand.Fulfilled))]
         [HarmonyPostfix]
-        static void OnWorkoutVarietyCustomerDemandFulfilled(BuildingRegistration registration, HashSet<Item> items, ref bool __result)
+        static void OnWorkoutVarietyCustomerDemandFulfilled(BuildingRegistration registration, HashSet<Item> items, ref WorkoutVarietyCustomerDemand __instance, bool __result)
         {
-        }
+
+            Dictionary<string, WorkoutExercise> itemWorkoutExercises = Traverse.Create(__instance).Field("ItemWorkoutExercises").GetValue() as Dictionary<string, WorkoutExercise>;
+            HashSet<WorkoutType> workoutTypes = Traverse.Create(__instance).Field("WorkoutTypes").GetValue() as HashSet<WorkoutType>    ;
+            
+            Logger.LogInfo($"Update price: result={__result}, workoutTypes={workoutTypes}, itemWorkoutExercises={itemWorkoutExercises}");
+            
+		}
 
     }
 

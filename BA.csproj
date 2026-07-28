@@ -27,8 +27,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="BAAssembly" Private="false">
+    <Reference Include="BigAmbitions" Private="false">
       <HintPath>lib\Managed\BigAmbitions.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+    <ItemGroup>
+    <Reference Include="BigAmbitions.Items" Private="false">
+      <HintPath>lib\Managed\BigAmbitions.Items.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
