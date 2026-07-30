@@ -1,0 +1,50 @@
+name: .NET
+
+on:
+  push:
+    branches: ["master"]
+    tags:
+      - "*"
+  pull_request:
+    branches: ["master"]
+
+env:
+  TARGET_FRAMEWORK: netstandard2.1
+  ASSEMBLY_NAME: com.bepinex.plugin.ba.enhancer
+  PLUGIN_DIR: BepInEx/plugins
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: dotnet publish -c Release --no-restore
+      - name: Package
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd bin/Release/$TARGET_FRAMEWORK/publish/
+          mkdir -p $PLUGIN_DIR
+          mv $ASSEMBLY_NAME.dll $PLUGIN_DIR/$ASSEMBLY_NAME-$GITHUB_REF_NAME.dll
+          zip -r $ASSEMBLY_NAME-$GITHUB_REF_NAME.zip $PLUGIN_DIR
+          echo "file_name=$(readlink -f $ASSEMBLY_NAME-$GITHUB_REF_NAME.zip)" >> $GITHUB_ENV
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ env.file_name }}
