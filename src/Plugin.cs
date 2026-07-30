@@ -1,17 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Logging;
-using BigAmbitions.Items;
-using Entities;
+using Buildings;
+using Controllers;
 using HarmonyLib;
-using PlayerActivity;
-
+using Helpers;
 
 namespace BA.src;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
 {
+
+    internal static string TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
+    internal static List<string> MISSING_TRUCK_IDS = [
+        "ba:vehicletype_umcdesert"
+    ];
 
     internal static new ManualLogSource Logger;
 
@@ -30,17 +35,38 @@ public class Plugin : BaseUnityPlugin
     class Patches
     {
 
-        [HarmonyPatch(typeof(WorkoutVarietyCustomerDemand), nameof(WorkoutVarietyCustomerDemand.Fulfilled))]
-        [HarmonyPostfix]
-        static void OnWorkoutVarietyCustomerDemandFulfilled(BuildingRegistration registration, HashSet<Item> items, ref WorkoutVarietyCustomerDemand __instance, bool __result)
-        {
+        [HarmonyReversePatch]
+        [HarmonyPatch(typeof(VehicleContractSettings), "TryAddVehicleByVehicleType")]
+        static void TryAddVehicleByVehicleType(object instance, string vehicleTypeName, ShowcaseVehicleController showcaseVehicle = null) => throw new NotImplementedException();
 
-            Dictionary<string, WorkoutExercise> itemWorkoutExercises = Traverse.Create(__instance).Field("ItemWorkoutExercises").GetValue() as Dictionary<string, WorkoutExercise>;
-            HashSet<WorkoutType> workoutTypes = Traverse.Create(__instance).Field("WorkoutTypes").GetValue() as HashSet<WorkoutType>    ;
-            
-            Logger.LogInfo($"Update price: result={__result}, workoutTypes={workoutTypes}, itemWorkoutExercises={itemWorkoutExercises}");
-            
-		}
+        [HarmonyPatch(typeof(VehicleContractSettings), "SetListOfVehiclesForSale")]
+        [HarmonyPostfix]
+        static void OnSetListOfVehiclesForSale(ref VehicleContractSettings __instance)
+        {
+            Address address = DialogController.current.contact.Address;
+            BuildingRegistration buildingRegistration = BuildingHelper.GetBuildingRegistration(address);
+            if (buildingRegistration == null
+                || string.IsNullOrEmpty(buildingRegistration.businessTypeName)
+                || string.IsNullOrEmpty(buildingRegistration.Layout)
+                || !TRUCKS_DEALERSHIP_LAYOUT_ID.Equals(buildingRegistration.Layout.ToLower()))
+            {
+                Logger.LogDebug($"SetListOfVehiclesForSale: BuildingRegistration doesn't match {TRUCKS_DEALERSHIP_LAYOUT_ID}");
+                return;
+            }
+
+            foreach (var truckId in MISSING_TRUCK_IDS)
+            {
+                Logger.LogInfo($"SetListOfVehiclesForSale: TryAddVehicleByVehicleType truckId={truckId}");
+                TryAddVehicleByVehicleType(__instance, truckId);
+            }
+
+            var vehicles = Traverse.Create(__instance).Field("_vehicles").GetValue() as List<ContractVehicleForSale>;
+            vehicles.ForEach(vehicle =>
+            {
+                Logger.LogDebug($"SetListOfVehiclesForSale: vehicle={vehicle.VehicleName}");
+            });
+
+        }
 
     }
 
