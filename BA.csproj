@@ -37,5 +37,15 @@
       <HintPath>lib\Managed\BigAmbitions.Items.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="BigAmbitions.Neighborhoods" Private="false">
+      <HintPath>lib\Managed\BigAmbitions.Neighborhoods.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="BigAmbitions.AI" Private="false">
+      <HintPath>lib\Managed\BigAmbitions.AI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
 </Project>

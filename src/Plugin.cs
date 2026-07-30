@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using AI.Citizens;
 using BepInEx;
 using BepInEx.Logging;
+using BigAmbitions.Neighborhoods;
 using Buildings;
 using Controllers;
 using HarmonyLib;
 using Helpers;
+using Parking.UndergroundParking;
 
 namespace BA.src;
 
@@ -26,13 +29,13 @@ public class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
-        harmony.PatchAll(typeof(Patches));
+        harmony.PatchAll(typeof(VehiclePatches));
+        harmony.PatchAll(typeof(PricingPatches));
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
     }
 
-
-    class Patches
+    class VehiclePatches
     {
 
         [HarmonyReversePatch]
@@ -70,4 +73,43 @@ public class Plugin : BaseUnityPlugin
 
     }
 
+    class PricingPatches
+    {
+        [HarmonyPatch(typeof(CitizenHelper), nameof(CitizenHelper.Init))]
+        [HarmonyPostfix]
+        static void OnCitizenHelperInit()
+        {
+            var neighborhoodsData = NeighborhoodHelper.NeighborhoodsData;
+            foreach (NeighborhoodData neighborhoodData in neighborhoodsData)
+            {
+
+                SocialClass dominantSocialClass = SocialClass.Working;
+                float maxSocialClassPercentage = neighborhoodData.workingClassPercentage;
+
+                if (neighborhoodData.middleClassPercentage > maxSocialClassPercentage)
+                {
+                    dominantSocialClass = SocialClass.Middle;
+                    maxSocialClassPercentage = neighborhoodData.middleClassPercentage;
+                }
+
+                if (neighborhoodData.upperClassClassPercentage > maxSocialClassPercentage)
+                {
+                    dominantSocialClass = SocialClass.Upper;
+                    maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
+                }
+
+                float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
+                Logger.LogDebug($"CitizenHelperInit: neighbourhood={neighborhoodData.neighbourhood}, dominantSocialClass={dominantSocialClass}, socialClassPercentage={maxSocialClassPercentage}, maxAcceptableRelativePrice={maxAcceptableRelativePrice}");
+
+            }
+
+            foreach (var item in CitizenHelper.averagePriceIndicesInNeighborhoods)
+            {
+                Logger.LogDebug($"CitizenHelperInit: neighbourhood={item.Key}, averagePriceIndex={item.Value}");
+            }
+
+
+        }
+
+    }
 }
