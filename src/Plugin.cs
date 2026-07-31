@@ -7,8 +7,10 @@ using BigAmbitions.Neighborhoods;
 using BigAmbitions.Rivals;
 using Buildings;
 using Controllers;
+using Entities;
 using HarmonyLib;
 using Helpers;
+using UI.Smartphone.Apps.Contacts;
 
 namespace BA.src;
 
@@ -16,9 +18,14 @@ namespace BA.src;
 public class Plugin : BaseUnityPlugin
 {
 
-    internal static string TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
-    internal static List<string> MISSING_TRUCK_IDS = [
+    internal static readonly string VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
+    internal static readonly List<string> VEHICLE_MISSING_TRUCK_IDS = [
         "ba:vehicletype_umcdesert"
+    ];
+    internal static readonly List<(string neighborhood, string buildingType, int minCustomerCapacity, int minTrafficIndex)> BIZ_BEST_BUILDINGS_TO_PURCHASE = [
+        ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 50),
+        (null, "ba:buildingtype_retail", 75, 37),
+        (null, "ba:buildingtype_office", 50, 37)
     ];
 
     internal static new ManualLogSource Logger;
@@ -52,13 +59,13 @@ public class Plugin : BaseUnityPlugin
             if (buildingRegistration == null
                 || string.IsNullOrEmpty(buildingRegistration.businessTypeName)
                 || string.IsNullOrEmpty(buildingRegistration.Layout)
-                || !TRUCKS_DEALERSHIP_LAYOUT_ID.Equals(buildingRegistration.Layout.ToLower()))
+                || !VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID.Equals(buildingRegistration.Layout.ToLower()))
             {
-                Logger.LogDebug($"SetListOfVehiclesForSale: BuildingRegistration doesn't match {TRUCKS_DEALERSHIP_LAYOUT_ID}");
+                Logger.LogDebug($"SetListOfVehiclesForSale: BuildingRegistration doesn't match {VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID}");
                 return;
             }
 
-            foreach (var truckId in MISSING_TRUCK_IDS)
+            foreach (var truckId in VEHICLE_MISSING_TRUCK_IDS)
             {
                 Logger.LogInfo($"SetListOfVehiclesForSale: TryAddVehicleByVehicleType truckId={truckId}");
                 TryAddVehicleByVehicleType(__instance, truckId);
@@ -131,5 +138,42 @@ public class Plugin : BaseUnityPlugin
             }
 
         }
+
+        [HarmonyPatch(typeof(BuildingManager), "Awake")]
+        [HarmonyPostfix]
+        static void OnBuildingManagerAwake(ref BuildingManager __instance)
+        {
+            Logger.LogDebug($"OnBuildingManagerAwake: Init");
+            GlobalEvents.onBuildingRegistrationChange = (Action<Address>)Delegate.Combine(GlobalEvents.onBuildingRegistrationChange, (Action<Address>)delegate (Address address)
+            {
+
+                var buildingRegistration = BuildingHelper.GetBuildingRegistration(address);
+
+                Logger.LogDebug($"OnBuildingManagerAwake: address={address}, "
+                    + $"neighborhood={buildingRegistration.Neighborhood}, "
+                    + $"type={buildingRegistration.BuildingCached.BuildingType}, "
+                    + $"customerCapacity={buildingRegistration.BuildingCached.GetCustomerCapacity}, "
+                    + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}, "
+                    + $"availableForRent={buildingRegistration.AvailableForRent}");
+
+                BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(building =>
+                {
+                    var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = building;
+
+                    if (buildingRegistration.AvailableForRent == true
+                        && (neighborhood == null || neighborhood.Equals(buildingRegistration.Neighborhood))
+                        && buildingType.Equals(buildingRegistration.BuildingCached.BuildingType)
+                        && buildingRegistration.BuildingCached.GetCustomerCapacity >= minCustomerCapacity
+                        && buildingRegistration.BuildingCached.trafficIndex >= minTrafficIndex)
+                    {
+                        var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
+                        GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
+                            new Dictionary<string, string> { { "businessType", $"{buildingRegistration.Neighborhood} {buildingType} {address}" } });
+                    }
+                });
+            });
+
+        }
+
     }
 }

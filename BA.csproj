@@ -40,6 +40,9 @@
     <Reference Include="BigAmbitions.AI" Private="false">
       <HintPath>lib\Managed\BigAmbitions.AI.dll</HintPath>
     </Reference>
+    <Reference Include="HGExtensions" Private="false">
+      <HintPath>lib\Managed\HGExtensions.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.TextMeshPro" Private="false">
       <HintPath>lib\Managed\Unity.TextMeshPro.dll</HintPath>
     </Reference>
