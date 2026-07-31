@@ -134,7 +134,7 @@ public class Plugin : BaseUnityPlugin
 
             if (bizManBusiness.building.SpecialService == null)
             {
-                __instance.offerAmountInputField.text = Math.Round(minOfferPrice, 0, MidpointRounding.AwayFromZero).ToString();
+                __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 0.01f, 0, MidpointRounding.AwayFromZero).ToString();
             }
 
         }
