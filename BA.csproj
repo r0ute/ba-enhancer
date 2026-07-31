@@ -31,20 +31,17 @@
     <Reference Include="BigAmbitions" Private="false">
       <HintPath>lib\Managed\BigAmbitions.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="BigAmbitions.Items" Private="false">
       <HintPath>lib\Managed\BigAmbitions.Items.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="BigAmbitions.Neighborhoods" Private="false">
       <HintPath>lib\Managed\BigAmbitions.Neighborhoods.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="BigAmbitions.AI" Private="false">
       <HintPath>lib\Managed\BigAmbitions.AI.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro" Private="false">
+      <HintPath>lib\Managed\Unity.TextMeshPro.dll</HintPath>
     </Reference>
   </ItemGroup>
 

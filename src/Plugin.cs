@@ -4,11 +4,11 @@ using AI.Citizens;
 using BepInEx;
 using BepInEx.Logging;
 using BigAmbitions.Neighborhoods;
+using BigAmbitions.Rivals;
 using Buildings;
 using Controllers;
 using HarmonyLib;
 using Helpers;
-using Parking.UndergroundParking;
 
 namespace BA.src;
 
@@ -31,6 +31,7 @@ public class Plugin : BaseUnityPlugin
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
         harmony.PatchAll(typeof(VehiclePatches));
         harmony.PatchAll(typeof(PricingPatches));
+        harmony.PatchAll(typeof(BizPatches));
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
     }
@@ -111,5 +112,24 @@ public class Plugin : BaseUnityPlugin
 
         }
 
+    }
+
+    class BizPatches
+    {
+        [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.SetAiOwned))]
+        [HarmonyPostfix]
+        static void OnSetAiOwned(ref BizManPresentation __instance)
+        {
+            var bizManBusiness = Traverse.Create(__instance).Field("bizManBusiness").GetValue() as BizManBusiness;
+            float minOfferPrice = CompetitionHelper.CalculateAiOwnedValuation(bizManBusiness.buildingRegistration)
+            * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
+            Logger.LogDebug($"OnSendOvertakeOffer: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
+
+            if (bizManBusiness.building.SpecialService == null)
+            {
+                __instance.offerAmountInputField.text = Math.Round(minOfferPrice, 0, MidpointRounding.AwayFromZero).ToString();
+            }
+
+        }
     }
 }
