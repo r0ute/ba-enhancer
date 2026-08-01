@@ -188,7 +188,7 @@ public class Plugin : BaseUnityPlugin
 
                     businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
                     {
-                        Logger.LogDebug($"OnBuildingManagerAwake: dayFactorMultiplier: "
+                        Logger.LogDebug($"OnBuildingManagerAwake: hourlyFactorMultiplier: "
                             + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
                     });
 
