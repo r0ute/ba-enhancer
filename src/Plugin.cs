@@ -129,12 +129,13 @@ public class Plugin : BaseUnityPlugin
         static void OnSetAiOwned(ref BizManPresentation __instance)
         {
             var bizManBusiness = Traverse.Create(__instance).Field("bizManBusiness").GetValue() as BizManBusiness;
-            float minOfferPrice = CompetitionHelper.CalculateAiOwnedValuation(bizManBusiness.buildingRegistration)
-            * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
-            Logger.LogDebug($"OnSendOvertakeOffer: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
 
             if (bizManBusiness.building.SpecialService == null)
             {
+                float minOfferPrice = CompetitionHelper.CalculateAiOwnedValuation(bizManBusiness.buildingRegistration)
+                    * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
+                Logger.LogDebug($"OnSendOvertakeOffer: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
+
                 __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 0.01f, 0, MidpointRounding.AwayFromZero).ToString();
             }
 
@@ -178,7 +179,7 @@ public class Plugin : BaseUnityPlugin
                 .ToList()
                 .ForEach(businessType =>
                 {
-                    Logger.LogDebug($"\nOnBuildingManagerAwake: businessType={businessType}");
+                    Logger.LogDebug($"OnBuildingManagerAwake: businessType={businessType}");
 
                     businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
                     {
