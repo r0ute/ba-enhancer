@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using AI.Citizens;
 using BepInEx;
 using BepInEx.Logging;
@@ -173,6 +174,25 @@ public class Plugin : BaseUnityPlugin
                 });
             });
 
+            BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
+                .ToList()
+                .ForEach(businessType =>
+                {
+                    Logger.LogDebug($"\nOnBuildingManagerAwake: businessType={businessType}");
+
+                    businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
+                    {
+                        Logger.LogDebug($"OnBuildingManagerAwake: dayFactorMultiplier: "
+                            + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
+                    });
+
+                    businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
+                    {
+                        Logger.LogDebug($"OnBuildingManagerAwake: dayFactorMultiplier: "
+                            + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
+                    });
+
+                });
         }
 
     }
