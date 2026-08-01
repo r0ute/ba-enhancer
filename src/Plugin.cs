@@ -204,9 +204,9 @@ public class Plugin : BaseUnityPlugin
 
             BuildingHelper.AllNeighbourhoodBuildings
                 .SelectMany(neighbourhood => neighbourhood.Value
-                    .Where(building => !building.SpecialService)
-                    .Where(building => BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searchedBuilding =>
-                        isBuldingMatched(searchedBuilding, neighbourhood.Key, building)))
+                    .Where(building => !building.SpecialService
+                        && BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searchedBuilding =>
+                            isBuldingMatched(searchedBuilding, neighbourhood.Key, building)))
                     .Select(building => (Neighbourhood: neighbourhood.Key, Building: building)))
                 .OrderBy(entry => entry.Neighbourhood)
                 .ThenByDescending(entry => entry.Building.trafficIndex)
@@ -229,7 +229,8 @@ public class Plugin : BaseUnityPlugin
         {
 
             var (expectedNeighborhood, expectedBuildingType, minCustomerCapacity, minTrafficIndex) = expectedBuilding;
-            return (neighborhood == null || neighborhood.Equals(expectedNeighborhood))
+
+            return (expectedNeighborhood  == null || expectedNeighborhood.Equals(neighborhood))
                         && expectedBuildingType.Equals(building.BuildingType)
                         && building.GetCustomerCapacity >= minCustomerCapacity
                         && building.trafficIndex >= minTrafficIndex;
