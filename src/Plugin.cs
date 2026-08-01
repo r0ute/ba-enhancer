@@ -25,8 +25,18 @@ public class Plugin : BaseUnityPlugin
     ];
     internal static readonly List<(string neighborhood, string buildingType, int minCustomerCapacity, int minTrafficIndex)> BIZ_BEST_BUILDINGS_TO_PURCHASE = [
         ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 49),
+        ("ba:neighborhood_garmentdistrict", "ba:buildingtype_retail", 30, 49),
         (null, "ba:buildingtype_retail", 75, 37),
         (null, "ba:buildingtype_office", 50, 37)
+    ];
+
+    internal static readonly int BIZ_SEARCH_MIN_TRAFFIC_INDEX = 37;
+
+    internal static readonly int BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD = 5;
+
+    internal static readonly List<string> BIZ_SEARCH_BUILING_TYPES = [
+        "ba:buildingtype_office",
+        "ba:buildingtype_retail"
     ];
 
     internal static new ManualLogSource Logger;
@@ -201,25 +211,37 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnBuildingManagerAwake3()
         {
-
             BuildingHelper.AllNeighbourhoodBuildings
                 .SelectMany(neighbourhood => neighbourhood.Value
                     .Where(building => !building.SpecialService
-                        && BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searchedBuilding =>
-                            isBuldingMatched(searchedBuilding, neighbourhood.Key, building)))
-                    .Select(building => (Neighbourhood: neighbourhood.Key, Building: building)))
+                        && BIZ_SEARCH_BUILING_TYPES.Contains(building.BuildingType)
+                        && building.trafficIndex >= BIZ_SEARCH_MIN_TRAFFIC_INDEX)
+                    .Select(building => new
+                    {
+                        Neighbourhood = neighbourhood.Key,
+                        Building = building
+                    }))
+                .GroupBy(entry => new
+                {
+                    entry.Neighbourhood,
+                    entry.Building.BuildingType
+                })
+                .SelectMany(group => group
+                    .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
+                    .ThenByDescending(entry => entry.Building.trafficIndex)
+                    .Take(BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD))
                 .OrderBy(entry => entry.Neighbourhood)
-                .ThenByDescending(entry => entry.Building.trafficIndex)
+                .ThenBy(entry => entry.Building.BuildingType)
                 .ToList()
                 .ForEach(entry =>
                 {
                     var building = entry.Building;
 
-                    Logger.LogDebug($"OnBuildingManagerAwake3: address={building.Address}, "
-                        + $"neighborhood={entry.Neighbourhood}, "
-                        + $"type={building.BuildingType}, "
+                    Logger.LogDebug($"OnBuildingManagerAwake3: neighborhood={entry.Neighbourhood}, "
+                        + $"type={entry.Building.BuildingType}, "
                         + $"customerCapacity={building.GetCustomerCapacity}, "
-                        + $"trafficIndex={building.trafficIndex}");
+                        + $"trafficIndex={building.trafficIndex}, "
+                        + $"address={building.Address}");
                 });
 
         }
@@ -230,7 +252,7 @@ public class Plugin : BaseUnityPlugin
 
             var (expectedNeighborhood, expectedBuildingType, minCustomerCapacity, minTrafficIndex) = expectedBuilding;
 
-            return (expectedNeighborhood  == null || expectedNeighborhood.Equals(neighborhood))
+            return (expectedNeighborhood == null || expectedNeighborhood.Equals(neighborhood))
                         && expectedBuildingType.Equals(building.BuildingType)
                         && building.GetCustomerCapacity >= minCustomerCapacity
                         && building.trafficIndex >= minTrafficIndex;
