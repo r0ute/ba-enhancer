@@ -126,7 +126,8 @@ public class Plugin : BaseUnityPlugin
                         + $"maxAcceptableRelativePrice={maxAcceptableRelativePrice}, "
                         + $"averagePriceIndex={CitizenHelper.averagePriceIndicesInNeighborhoods.Get(neighborhoodData.neighbourhood)}, "
                         + $"marketingStrength={neighborhoodData.marketingStrength}, "
-                        + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}");
+                        + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}, "
+                        + $"minTrafficFor100Promotion={100 * (1 - neighborhoodData.marketingStrength)}");
                 });
 
         }
