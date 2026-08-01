@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ArrayExtensions;
 using System.Collections.Generic;
 using System.Linq;
 using AI.Citizens;
@@ -12,6 +13,7 @@ using Entities;
 using HarmonyLib;
 using Helpers;
 using UI.Smartphone.Apps.Contacts;
+using UnityEngine.UIElements.Collections;
 
 namespace BA.src;
 
@@ -98,35 +100,34 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnCitizenHelperInit()
         {
-            var neighborhoodsData = NeighborhoodHelper.NeighborhoodsData;
-            foreach (NeighborhoodData neighborhoodData in neighborhoodsData)
-            {
-
-                SocialClass dominantSocialClass = SocialClass.Working;
-                float maxSocialClassPercentage = neighborhoodData.workingClassPercentage;
-
-                if (neighborhoodData.middleClassPercentage > maxSocialClassPercentage)
+            NeighborhoodHelper.NeighborhoodsData
+                .ToList()
+                .ForEach(neighborhoodData =>
                 {
-                    dominantSocialClass = SocialClass.Middle;
-                    maxSocialClassPercentage = neighborhoodData.middleClassPercentage;
-                }
+                    SocialClass dominantSocialClass = SocialClass.Working;
+                    float maxSocialClassPercentage = neighborhoodData.workingClassPercentage;
 
-                if (neighborhoodData.upperClassClassPercentage > maxSocialClassPercentage)
-                {
-                    dominantSocialClass = SocialClass.Upper;
-                    maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
-                }
+                    if (neighborhoodData.middleClassPercentage > maxSocialClassPercentage)
+                    {
+                        dominantSocialClass = SocialClass.Middle;
+                        maxSocialClassPercentage = neighborhoodData.middleClassPercentage;
+                    }
 
-                float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
-                Logger.LogDebug($"CitizenHelperInit: neighbourhood={neighborhoodData.neighbourhood}, dominantSocialClass={dominantSocialClass}, socialClassPercentage={maxSocialClassPercentage}, maxAcceptableRelativePrice={maxAcceptableRelativePrice}");
+                    if (neighborhoodData.upperClassClassPercentage > maxSocialClassPercentage)
+                    {
+                        dominantSocialClass = SocialClass.Upper;
+                        maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
+                    }
 
-            }
-
-            foreach (var item in CitizenHelper.averagePriceIndicesInNeighborhoods)
-            {
-                Logger.LogDebug($"CitizenHelperInit: neighbourhood={item.Key}, averagePriceIndex={item.Value}");
-            }
-
+                    float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
+                    Logger.LogDebug($"CitizenHelperInit: neighbourhood={neighborhoodData.neighbourhood}, "
+                        + $"dominantSocialClass={dominantSocialClass}, "
+                        + $"socialClassPercentage={maxSocialClassPercentage}, "
+                        + $"maxAcceptableRelativePrice={maxAcceptableRelativePrice}, "
+                        + $"averagePriceIndex={CitizenHelper.averagePriceIndicesInNeighborhoods.Get(neighborhoodData.neighbourhood)}, "
+                        + $"marketingStrength={neighborhoodData.marketingStrength}, "
+                        + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}");
+                });
 
         }
 
