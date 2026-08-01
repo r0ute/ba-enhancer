@@ -209,6 +209,7 @@ public class Plugin : BaseUnityPlugin
                         isBuldingMatched(searchedBuilding, neighbourhood.Key, building)))
                     .Select(building => (Neighbourhood: neighbourhood.Key, Building: building)))
                 .OrderBy(entry => entry.Neighbourhood)
+                .ThenByDescending(entry => entry.Building.trafficIndex)
                 .ToList()
                 .ForEach(entry =>
                 {
