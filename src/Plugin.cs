@@ -159,21 +159,17 @@ public class Plugin : BaseUnityPlugin
                     + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}, "
                     + $"availableForRent={buildingRegistration.AvailableForRent}");
 
-                BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(searcheBuilding =>
+                if (buildingRegistration.AvailableForRent && BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searcheBuilding =>
+                    isBuldingMatched(searcheBuilding, buildingRegistration.Neighborhood, buildingRegistration.BuildingCached)))
                 {
-                    var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = searcheBuilding;
-
-                    if (buildingRegistration.AvailableForRent == true
-                        && isBuldingMatched(searcheBuilding, buildingRegistration.Neighborhood, buildingRegistration.BuildingCached))
-                    {
-                        var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
-                        GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
-                            new Dictionary<string, string> { { "businessType", $"{buildingRegistration.Neighborhood} {buildingType} {address}" } });
-                    }
-                });
+                    var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
+                    GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
+                        new Dictionary<string, string> { { "businessType", $"{buildingRegistration.Neighborhood} {address} "
+                        + $"{buildingRegistration.BuildingCached.BuildingType} "
+                        + $"capacity={buildingRegistration.BuildingCached.GetCustomerCapacity} "
+                        + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}"} });
+                }
             });
-
-
         }
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
