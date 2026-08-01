@@ -145,7 +145,6 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnBuildingManagerAwake(ref BuildingManager __instance)
         {
-            Logger.LogDebug($"OnBuildingManagerAwake: Init");
             GlobalEvents.onBuildingRegistrationChange = (Action<Address>)Delegate.Combine(GlobalEvents.onBuildingRegistrationChange, (Action<Address>)delegate (Address address)
             {
 
@@ -175,21 +174,28 @@ public class Plugin : BaseUnityPlugin
                 });
             });
 
+
+        }
+
+        [HarmonyPatch(typeof(BuildingManager), "Awake")]
+        [HarmonyPostfix]
+        static void OnBuildingManagerAwake2(ref BuildingManager __instance)
+        {
             BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
                 .ToList()
                 .ForEach(businessType =>
                 {
-                    Logger.LogDebug($"OnBuildingManagerAwake: businessType={businessType}");
+                    Logger.LogDebug($"OnBuildingManagerAwake2: businessType={businessType}");
 
                     businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
                     {
-                        Logger.LogDebug($"OnBuildingManagerAwake: dayFactorMultiplier: "
+                        Logger.LogDebug($"OnBuildingManagerAwake2: dayFactorMultiplier: "
                             + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
                     });
 
                     businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
                     {
-                        Logger.LogDebug($"OnBuildingManagerAwake: hourlyFactorMultiplier: "
+                        Logger.LogDebug($"OnBuildingManagerAwake2: hourlyFactorMultiplier: "
                             + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
                     });
 
