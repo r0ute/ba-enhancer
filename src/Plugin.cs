@@ -145,7 +145,7 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
         [HarmonyPostfix]
-        static void OnBuildingManagerAwake(ref BuildingManager __instance)
+        static void OnBuildingManagerAwake()
         {
             GlobalEvents.onBuildingRegistrationChange = (Action<Address>)Delegate.Combine(GlobalEvents.onBuildingRegistrationChange, (Action<Address>)delegate (Address address)
             {
@@ -174,7 +174,7 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
         [HarmonyPostfix]
-        static void OnBuildingManagerAwake2(ref BuildingManager __instance)
+        static void OnBuildingManagerAwake2()
         {
             BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
                 .ToList()
@@ -199,36 +199,27 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
         [HarmonyPostfix]
-        static void OnBuildingManagerAwake3(ref BuildingManager __instance)
+        static void OnBuildingManagerAwake3()
         {
 
-            foreach (var neighbourhoodBuildings in BuildingHelper.AllNeighbourhoodBuildings)
-            {
-                var neighbourhood = neighbourhoodBuildings.Key;
-
-                neighbourhoodBuildings.Value.ForEach(building =>
+            BuildingHelper.AllNeighbourhoodBuildings
+                .SelectMany(neighbourhood => neighbourhood.Value
+                    .Where(building => !building.SpecialService)
+                    .Where(building => BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searchedBuilding =>
+                        isBuldingMatched(searchedBuilding, neighbourhood.Key, building)))
+                    .Select(building => (Neighbourhood: neighbourhood.Key, Building: building)))
+                .OrderBy(entry => entry.Neighbourhood)
+                .ToList()
+                .ForEach(entry =>
                 {
+                    var building = entry.Building;
 
-                    if (!building.SpecialService)
-                    {
-                        BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(searchedBuilding =>
-                        {
-                            var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = searchedBuilding;
-
-                            if (isBuldingMatched(searchedBuilding, neighbourhood, building))
-                            {
-                                Logger.LogDebug($"OnBuildingManagerAwake3: address={building.Address}, "
-                                    + $"neighborhood={neighbourhood}, "
-                                    + $"type={building.BuildingType}, "
-                                    + $"customerCapacity={building.GetCustomerCapacity}, "
-                                    + $"trafficIndex={building.trafficIndex}");
-                            }
-                        });
-                    }
-
+                    Logger.LogDebug($"OnBuildingManagerAwake3: address={building.Address}, "
+                        + $"neighborhood={entry.Neighbourhood}, "
+                        + $"type={building.BuildingType}, "
+                        + $"customerCapacity={building.GetCustomerCapacity}, "
+                        + $"trafficIndex={building.trafficIndex}");
                 });
-
-            }
 
         }
 
