@@ -24,7 +24,7 @@ public class Plugin : BaseUnityPlugin
         "ba:vehicletype_umcdesert"
     ];
     internal static readonly List<(string neighborhood, string buildingType, int minCustomerCapacity, int minTrafficIndex)> BIZ_BEST_BUILDINGS_TO_PURCHASE = [
-        ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 50),
+        ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 49),
         (null, "ba:buildingtype_retail", 75, 37),
         (null, "ba:buildingtype_office", 50, 37)
     ];
@@ -141,6 +141,8 @@ public class Plugin : BaseUnityPlugin
 
         }
 
+
+
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
         [HarmonyPostfix]
         static void OnBuildingManagerAwake(ref BuildingManager __instance)
@@ -157,15 +159,12 @@ public class Plugin : BaseUnityPlugin
                     + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}, "
                     + $"availableForRent={buildingRegistration.AvailableForRent}");
 
-                BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(building =>
+                BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(searcheBuilding =>
                 {
-                    var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = building;
+                    var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = searcheBuilding;
 
                     if (buildingRegistration.AvailableForRent == true
-                        && (neighborhood == null || neighborhood.Equals(buildingRegistration.Neighborhood))
-                        && buildingType.Equals(buildingRegistration.BuildingCached.BuildingType)
-                        && buildingRegistration.BuildingCached.GetCustomerCapacity >= minCustomerCapacity
-                        && buildingRegistration.BuildingCached.trafficIndex >= minTrafficIndex)
+                        && isBuldingMatched(searcheBuilding, buildingRegistration.Neighborhood, buildingRegistration.BuildingCached))
                     {
                         var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
                         GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
@@ -202,5 +201,50 @@ public class Plugin : BaseUnityPlugin
                 });
         }
 
+        [HarmonyPatch(typeof(BuildingManager), "Awake")]
+        [HarmonyPostfix]
+        static void OnBuildingManagerAwake3(ref BuildingManager __instance)
+        {
+
+            foreach (var neighbourhoodBuildings in BuildingHelper.AllNeighbourhoodBuildings)
+            {
+                var neighbourhood = neighbourhoodBuildings.Key;
+
+                neighbourhoodBuildings.Value.ForEach(building =>
+                {
+
+                    if (!building.SpecialService)
+                    {
+                        BIZ_BEST_BUILDINGS_TO_PURCHASE.ForEach(searchedBuilding =>
+                        {
+                            var (neighborhood, buildingType, minCustomerCapacity, minTrafficIndex) = searchedBuilding;
+
+                            if (isBuldingMatched(searchedBuilding, neighbourhood, building))
+                            {
+                                Logger.LogDebug($"OnBuildingManagerAwake3: address={building.Address}, "
+                                    + $"neighborhood={neighbourhood}, "
+                                    + $"type={building.BuildingType}, "
+                                    + $"customerCapacity={building.GetCustomerCapacity}, "
+                                    + $"trafficIndex={building.trafficIndex}");
+                            }
+                        });
+                    }
+
+                });
+
+            }
+
+        }
+
+        internal static bool isBuldingMatched((string expectedNeighborhood, string expectedBuildingType, int minCustomerCapacity, int minTrafficIndex) expectedBuilding,
+            string neighborhood, Building building)
+        {
+
+            var (expectedNeighborhood, expectedBuildingType, minCustomerCapacity, minTrafficIndex) = expectedBuilding;
+            return (neighborhood == null || neighborhood.Equals(expectedNeighborhood))
+                        && expectedBuildingType.Equals(building.BuildingType)
+                        && building.GetCustomerCapacity >= minCustomerCapacity
+                        && building.trafficIndex >= minTrafficIndex;
+        }
     }
 }
