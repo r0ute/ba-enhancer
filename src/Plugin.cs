@@ -231,20 +231,29 @@ public class Plugin : BaseUnityPlugin
     class BizPatches
     {
         [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.SetAiOwned))]
+        [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.LoadLeftSide))]
         [HarmonyPostfix]
-        static void OnSetAiOwned(ref BizManPresentation __instance)
+        static void OnBizManPresentationSetAiOwned(ref BizManPresentation __instance)
         {
             var bizManBusiness = Traverse.Create(__instance).Field("bizManBusiness").GetValue() as BizManBusiness;
 
-            if (bizManBusiness.building.SpecialService == null)
+            if (bizManBusiness.building.SpecialService != null)
             {
-                float minOfferPrice = CompetitionHelper.CalculateAiOwnedValuation(bizManBusiness.buildingRegistration)
-                    * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
-                Logger.LogDebug($"OnSendOvertakeOffer: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
-
-                __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 0.01f, 0, MidpointRounding.AwayFromZero).ToString();
+                return;
             }
 
+            float minOfferPrice = CompetitionHelper.CalculateAiOwnedValuation(bizManBusiness.buildingRegistration)
+                * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
+            Logger.LogDebug($"OnBizManPresentationSetAiOwned: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
+            __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 1, 0, MidpointRounding.AwayFromZero).ToString();
+
+            BuildingForSale buildingForSale = SaveGameManager.Current.buildingsForSale.FirstOrDefault((BuildingForSale x) => x.address == bizManBusiness.building.Address);
+            float minBuildingPrice = (buildingForSale == null) 
+                ? (bizManBusiness.building.GetMarketValue()
+                    * (1f + RivalsHelper.GetBuyBuildingAcceptRate(bizManBusiness.buildingRegistration.buildingOwnerRivalId) / 100f))
+                : (buildingForSale.buildingPrice * buildingForSale.acceptOfferRate);
+            Logger.LogDebug($"OnBizManPresentationSetAiOwned: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minBuildingPrice={minBuildingPrice}");
+            __instance.buyBuildingAmountInputField.text = Math.Round(minBuildingPrice + 1, 0, MidpointRounding.AwayFromZero).ToString();
         }
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
@@ -270,8 +279,8 @@ public class Plugin : BaseUnityPlugin
                         new Dictionary<string, string> { { "businessType", $"{buildingRegistration.Neighborhood} {address} "
                         + $"{buildingRegistration.BuildingCached.BuildingType} "
                         + $"capacity={buildingRegistration.BuildingCached.GetCustomerCapacity} "
-                        + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}" 
-                        + $"size={buildingRegistration.BuildingCached.BuildingSize} {buildingRegistration.BuildingCached.BuildingVersion}"} 
+                        + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}"
+                        + $"size={buildingRegistration.BuildingCached.BuildingSize} {buildingRegistration.BuildingCached.BuildingVersion}"}
                     });
                 }
             });
@@ -290,7 +299,7 @@ public class Plugin : BaseUnityPlugin
                 .Where(warehouse => warehouse != null)
                 .Distinct()
                 .ToList();
-                
+
             if (warehouses.Count == 0)
             {
                 Logger.LogWarning($"OnPurchasingAgentPlanUIStartOrder: no assigned warehouses");
