@@ -235,45 +235,75 @@ public class Plugin : BaseUnityPlugin
             });
         }
 
-        [HarmonyPatch(typeof(PurchasingAgentProductsScrollerController), nameof(PurchasingAgentProductsScrollerController.LoadProducts))]
+        [HarmonyPatch(typeof(PurchasingAgentPlanUI), "StartOrder")]
         [HarmonyPostfix]
-        static void OnPurchasingAgentProductsScrollerControllerLoadProducts(ref PurchasingAgentProductsScrollerController __instance)
+        static void OnPurchasingAgentPlanUIStartOrder(ref PurchasingAgentPlanUI __instance)
         {
-            var productModel = __instance.data
-                .FirstOrDefault(product => product.isTarget && product?.productRef?.assignedWarehouse != null);
+            Logger.LogInfo($"OnPurchasingAgentPlanUIStartOrder: Start");
 
-            if (productModel == null)
+            var warehouses = __instance.productsScrollerController.data
+                .Where(product => product.isTarget && product?.productRef?.assignedWarehouse != null)
+                .Select(product => product.warehouses
+                    .FirstOrDefault(warehouse => warehouse.Address == product.productRef.assignedWarehouse))
+                .Where(warehouse => warehouse != null)
+                .Distinct()
+                .ToList();
+                
+            if (warehouses.Count == 0)
             {
-                Logger.LogWarning("OnPurchasingAgentProductsScrollerControllerLoadProducts: no assigned warehouse");
+                Logger.LogWarning($"OnPurchasingAgentPlanUIStartOrder: no assigned warehouses");
                 return;
-            }
-
-            var warehouse = productModel.warehouses.FirstOrDefault(building => building.Address == productModel.productRef.assignedWarehouse);
-            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: assignedWarehouse={warehouse}");
-            Dictionary<string, int> itemsToPurchase;
-
-            if (warehouse.businessTypeName == "ba:businesstype_factory")
-            {
-                itemsToPurchase = handleFactoryPurchases(warehouse);
-            }
-            else if (warehouse.businessTypeName == "ba:businesstype_warehouse")
-            {
-                Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: {warehouse.businessTypeName}");
-                return; // todo: handle it
             }
             else
             {
-                Logger.LogWarning($"OnPurchasingAgentProductsScrollerControllerLoadProducts: Unsupported building type: {warehouse.businessTypeName}");
+                Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: warehousesCount={warehouses.Count}");
+            }
+
+            var itemsToPurchase = new Dictionary<string, int>();
+
+            warehouses.ForEach(warehouse =>
+            {
+                Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: assignedWarehouse={warehouse.Address}");
+                Dictionary<string, int> otherItemsToPurchase;
+
+                if (warehouse.businessTypeName == "ba:businesstype_factory")
+                {
+                    otherItemsToPurchase = handleFactoryPurchases(warehouse);
+                }
+                else if (warehouse.businessTypeName == "ba:businesstype_warehouse")
+                {
+                    Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: {warehouse.businessTypeName}");
+                    return; // todo: handle it
+                }
+                else
+                {
+                    Logger.LogWarning($"OnPurchasingAgentPlanUIStartOrder: Unsupported building type: {warehouse.businessTypeName}");
+                    return;
+                }
+
+                otherItemsToPurchase.ToList()
+                    .ForEach(item =>
+                        itemsToPurchase[item.Key] = itemsToPurchase.GetValueOrDefault(item.Key) + item.Value);
+            });
+
+            if (itemsToPurchase.Count == 0)
+            {
                 return;
             }
 
-            __instance.data.ForEach(productModel => productModel.UpdateAmount(itemsToPurchase.GetValueOrDefault(productModel.productRef.itemName)));
-            __instance.scroller.ReloadData(0f);
+            __instance.productsScrollerController.data.ForEach(productModel =>
+                {
+                    productModel.UpdateAmount(itemsToPurchase.GetValueOrDefault(productModel.productRef.itemName));
+                    Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: item={productModel.productRef.itemName},"
+                        + $"amount={productModel.productRef.amount}");
+                });
+            __instance.productsScrollerController.scroller.ReloadData(0f);
+            Logger.LogInfo($"OnPurchasingAgentPlanUIStartOrder: End");
         }
 
         internal static Dictionary<string, int> handleFactoryPurchases(BuildingRegistration buildingRegistration)
         {
-            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: {buildingRegistration.businessTypeName}");
+            Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: {buildingRegistration.businessTypeName}");
             var recipeItems = new Dictionary<string, int>();
 
             buildingRegistration.itemInstances.Values
@@ -282,7 +312,7 @@ public class Plugin : BaseUnityPlugin
                 .ToList()
                 .ForEach(instance =>
                 {
-                    Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: selectedRecipe={instance.SelectedRecipe}");
+                    Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: selectedRecipe={instance.SelectedRecipe}");
 
                     instance.SelectedRecipe.ingredients
                         .ToList()
@@ -294,13 +324,13 @@ public class Plugin : BaseUnityPlugin
                 .SelectMany(day => day.openingHourSlots)
                 .Sum(slot => slot.GetDurationInHours);
 
-            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: weeklyHours={weeklyHours}");
+            Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: weeklyHours={weeklyHours}");
 
             recipeItems.Keys
                 .ToList()
                 .ForEach(key =>
                 {
-                    Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: recipeItem={key}, total={recipeItems[key]}");
+                    Logger.LogDebug($"OnPurchasingAgentPlanUIStartOrder: recipeItem={key}, total={recipeItems[key]}");
                     recipeItems[key] *= weeklyHours;
                 });
 
