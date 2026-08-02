@@ -25,13 +25,6 @@ public class Plugin : BaseUnityPlugin
         "ba:vehicletype_umcdesert"
     ];
 
-    internal static readonly List<(string neighborhood, string buildingType, int minCustomerCapacity, int minTrafficIndex)> BIZ_BEST_BUILDINGS_TO_PURCHASE = [
-        ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 49),
-        ("ba:neighborhood_garmentdistrict", "ba:buildingtype_retail", 30, 49),
-        (null, "ba:buildingtype_retail", 75, 37),
-        (null, "ba:buildingtype_office", 50, 37)
-    ];
-
     internal static readonly List<(string buildingType, int searchLimit)> BIZ_SEARCH_BUILDING_TYPES = [
         ("ba:buildingtype_cinema", 1),
         ("ba:buildingtype_theater", 1),
@@ -42,6 +35,8 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
 
     internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
+
+    internal static HashSet<Address> foundAddresses = [];
 
     private void Awake()
     {
@@ -117,7 +112,7 @@ public class Plugin : BaseUnityPlugin
             BIZ_SEARCH_BUILDING_TYPES.ForEach(searchBuildings);
         }
 
-        internal static void searchBuildings((string buildingType, int searchLimit) criteria) 
+        internal static void searchBuildings((string buildingType, int searchLimit) criteria)
         {
             BuildingHelper.AllNeighbourhoodBuildings
                 .SelectMany(neighbourhood => neighbourhood.Value
@@ -144,6 +139,7 @@ public class Plugin : BaseUnityPlugin
                 .ForEach(entry =>
                 {
                     var building = entry.Building;
+                    foundAddresses.Add(entry.Building.Address);
                     Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
                         + $"type={entry.Building.BuildingType}, "
                         + $"customerCapacity={building.GetCustomerCapacity}, "
@@ -226,8 +222,7 @@ public class Plugin : BaseUnityPlugin
                     + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}, "
                     + $"availableForRent={buildingRegistration.AvailableForRent}");
 
-                if (buildingRegistration.AvailableForRent && BIZ_BEST_BUILDINGS_TO_PURCHASE.Any(searcheBuilding =>
-                    isBuldingMatched(searcheBuilding, buildingRegistration.Neighborhood, buildingRegistration.BuildingCached)))
+                if (buildingRegistration.AvailableForRent && foundAddresses.Contains(address))
                 {
                     var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
                     GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
@@ -239,16 +234,5 @@ public class Plugin : BaseUnityPlugin
             });
         }
 
-        internal static bool isBuldingMatched((string expectedNeighborhood, string expectedBuildingType, int minCustomerCapacity, int minTrafficIndex) expectedBuilding,
-            string neighborhood, Building building)
-        {
-
-            var (expectedNeighborhood, expectedBuildingType, minCustomerCapacity, minTrafficIndex) = expectedBuilding;
-
-            return (expectedNeighborhood == null || expectedNeighborhood.Equals(neighborhood))
-                        && expectedBuildingType.Equals(building.BuildingType)
-                        && building.GetCustomerCapacity >= minCustomerCapacity
-                        && building.trafficIndex >= minTrafficIndex;
-        }
     }
 }
