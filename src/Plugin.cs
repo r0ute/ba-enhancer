@@ -239,23 +239,24 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnPurchasingAgentProductsScrollerControllerLoadProducts(ref PurchasingAgentProductsScrollerController __instance)
         {
-            var productModel = __instance.data.First();
+            var productModel = __instance.data
+                .FirstOrDefault(product => product.isTarget && product?.productRef?.assignedWarehouse != null);
 
-            if (!productModel.isTarget || productModel?.productRef?.assignedWarehouse == null)
+            if (productModel == null)
             {
-                Logger.LogWarning($"OnPurchasingAgentProductsScrollerControllerLoadProducts: no assigned warehouse");
+                Logger.LogWarning("OnPurchasingAgentProductsScrollerControllerLoadProducts: no assigned warehouse");
                 return;
             }
 
             var warehouse = productModel.warehouses.FirstOrDefault(building => building.Address == productModel.productRef.assignedWarehouse);
-            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: warehouse={warehouse}");
+            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: assignedWarehouse={warehouse}");
             Dictionary<string, int> itemsToPurchase;
 
             if (warehouse.businessTypeName == "ba:businesstype_factory")
             {
                 itemsToPurchase = handleFactoryPurchases(warehouse);
             }
-            else if (warehouse.businessTypeName == "ba:businesstype_factory")
+            else if (warehouse.businessTypeName == "ba:businesstype_warehouse")
             {
                 Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: {warehouse.businessTypeName}");
                 return; // todo: handle it
