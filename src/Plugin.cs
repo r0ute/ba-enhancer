@@ -11,6 +11,7 @@ using Entities;
 using HarmonyLib;
 using Helpers;
 using UI.Smartphone.Apps.Contacts;
+using UnityEngine;
 using UnityEngine.UIElements.Collections;
 
 namespace BA.src;
@@ -23,6 +24,7 @@ public class Plugin : BaseUnityPlugin
     internal static readonly List<string> VEHICLE_MISSING_TRUCK_IDS = [
         "ba:vehicletype_umcdesert"
     ];
+
     internal static readonly List<(string neighborhood, string buildingType, int minCustomerCapacity, int minTrafficIndex)> BIZ_BEST_BUILDINGS_TO_PURCHASE = [
         ("ba:neighborhood_industrycity", "ba:buildingtype_retail", 30, 49),
         ("ba:neighborhood_garmentdistrict", "ba:buildingtype_retail", 30, 49),
@@ -30,16 +32,16 @@ public class Plugin : BaseUnityPlugin
         (null, "ba:buildingtype_office", 50, 37)
     ];
 
-    internal static readonly int BIZ_SEARCH_MIN_TRAFFIC_INDEX = 37;
-
-    internal static readonly int BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD = 5;
-
-    internal static readonly List<string> BIZ_SEARCH_BUILING_TYPES = [
-        "ba:buildingtype_office",
-        "ba:buildingtype_retail"
+    internal static readonly List<(string buildingType, int searchLimit)> BIZ_SEARCH_BUILDING_TYPES = [
+        ("ba:buildingtype_cinema", 1),
+        ("ba:buildingtype_theater", 1),
+        ("ba:buildingtype_office", 6),
+        ("ba:buildingtype_retail", 14)
     ];
 
     internal static new ManualLogSource Logger;
+
+    internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
 
     private void Awake()
     {
@@ -79,7 +81,10 @@ public class Plugin : BaseUnityPlugin
                         maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
                     }
 
-                    float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
+                    var maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
+                    var minTrafficFor100Promotion = Mathf.RoundToInt(100 * (1 - neighborhoodData.marketingStrength));
+                    neighborhoodMinTrafficFor100Promotion.Add(neighborhoodData.neighbourhood, minTrafficFor100Promotion);
+
                     Logger.LogDebug($"OnGameManagerAwake: neighbourhood={neighborhoodData.neighbourhood}, "
                         + $"dominantSocialClass={dominantSocialClass}, "
                         + $"socialClassPercentage={maxSocialClassPercentage}, "
@@ -87,61 +92,64 @@ public class Plugin : BaseUnityPlugin
                         + $"averagePriceIndex={CitizenHelper.averagePriceIndicesInNeighborhoods.Get(neighborhoodData.neighbourhood)}, "
                         + $"marketingStrength={neighborhoodData.marketingStrength}, "
                         + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}, "
-                        + $"minTrafficFor100Promotion={100 * (1 - neighborhoodData.marketingStrength)}");
+                        + $"minTrafficFor100Promotion={minTrafficFor100Promotion}");
                 });
 
             BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
-            .ToList()
-            .ForEach(businessType =>
-            {
-                Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}");
-
-                businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
+                .ToList()
+                .ForEach(businessType =>
                 {
-                    Logger.LogDebug($"OnGameManagerAwake: dayFactorMultiplier: "
-                        + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
+                    Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}");
+
+                    businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
+                    {
+                        Logger.LogDebug($"OnGameManagerAwake: dayFactorMultiplier: "
+                            + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
+                    });
+
+                    businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
+                    {
+                        Logger.LogDebug($"OnGameManagerAwake: hourlyFactorMultiplier: "
+                            + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
+                    });
                 });
 
-                businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
-                {
-                    Logger.LogDebug($"OnGameManagerAwake: hourlyFactorMultiplier: "
-                        + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
-                });
+            BIZ_SEARCH_BUILDING_TYPES.ForEach(searchBuildings);
+        }
 
-            });
-
+        internal static void searchBuildings((string buildingType, int searchLimit) criteria) 
+        {
             BuildingHelper.AllNeighbourhoodBuildings
-            .SelectMany(neighbourhood => neighbourhood.Value
-                .Where(building => !building.SpecialService
-                    && BIZ_SEARCH_BUILING_TYPES.Contains(building.BuildingType)
-                    && building.trafficIndex >= BIZ_SEARCH_MIN_TRAFFIC_INDEX)
-                .Select(building => new
+                .SelectMany(neighbourhood => neighbourhood.Value
+                    .Where(building => !building.SpecialService
+                        && criteria.buildingType.Equals(building.BuildingType)
+                        && building.trafficIndex >= neighborhoodMinTrafficFor100Promotion.Get(neighbourhood.Key))
+                    .Select(building => new
+                    {
+                        Neighbourhood = neighbourhood.Key,
+                        Building = building
+                    }))
+                .GroupBy(entry => new
                 {
-                    Neighbourhood = neighbourhood.Key,
-                    Building = building
-                }))
-            .GroupBy(entry => new
-            {
-                entry.Neighbourhood,
-                entry.Building.BuildingType
-            })
-            .SelectMany(group => group
-                .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
-                .ThenByDescending(entry => entry.Building.trafficIndex)
-                .Take(BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD))
-            .OrderBy(entry => entry.Neighbourhood)
-            .ThenBy(entry => entry.Building.BuildingType)
-            .ToList()
-            .ForEach(entry =>
-            {
-                var building = entry.Building;
-
-                Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
-                    + $"type={entry.Building.BuildingType}, "
-                    + $"customerCapacity={building.GetCustomerCapacity}, "
-                    + $"trafficIndex={building.trafficIndex}, "
-                    + $"address={building.Address}");
-            });
+                    entry.Neighbourhood,
+                    entry.Building.BuildingType
+                })
+                .SelectMany(group => group
+                    .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
+                    .ThenByDescending(entry => entry.Building.trafficIndex)
+                    .Take(criteria.searchLimit))
+                .OrderBy(entry => entry.Neighbourhood)
+                .ThenBy(entry => entry.Building.BuildingType)
+                .ToList()
+                .ForEach(entry =>
+                {
+                    var building = entry.Building;
+                    Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
+                        + $"type={entry.Building.BuildingType}, "
+                        + $"customerCapacity={building.GetCustomerCapacity}, "
+                        + $"trafficIndex={building.trafficIndex}, "
+                        + $"address={building.Address}");
+                });
         }
     }
 
