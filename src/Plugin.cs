@@ -10,6 +10,7 @@ using Controllers;
 using Entities;
 using HarmonyLib;
 using Helpers;
+using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 using UI.Smartphone.Apps.Contacts;
 using UnityEngine;
 using UnityEngine.UIElements.Collections;
@@ -232,6 +233,77 @@ public class Plugin : BaseUnityPlugin
                         + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}"} });
                 }
             });
+        }
+
+        [HarmonyPatch(typeof(PurchasingAgentProductsScrollerController), nameof(PurchasingAgentProductsScrollerController.LoadProducts))]
+        [HarmonyPostfix]
+        static void OnPurchasingAgentProductsScrollerControllerLoadProducts(ref PurchasingAgentProductsScrollerController __instance)
+        {
+            var productModel = __instance.data.First();
+
+            // TODO: remove smart delivery check later?
+            if (!productModel.isTarget || productModel?.productRef?.assignedWarehouse == null)
+            {
+                Logger.LogWarning($"OnPurchasingAgentProductsScrollerControllerLoadProducts: no assigned warehouse");
+                return;
+            }
+
+            var warehouse = productModel.warehouses.FirstOrDefault(building => building.Address == productModel.productRef.assignedWarehouse);
+            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: warehouse={warehouse}");
+            Dictionary<string, int> itemsToPurchase;
+
+            if (warehouse.businessTypeName == "ba:businesstype_factory")
+            {
+                itemsToPurchase = handleFactoryPurchases(warehouse);
+            }
+            else if (warehouse.businessTypeName == "ba:businesstype_factory")
+            {
+                Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: {warehouse.businessTypeName}");
+                return; // todo: handle it
+            }
+            else
+            {
+                Logger.LogWarning($"OnPurchasingAgentProductsScrollerControllerLoadProducts: Unsupported building type: {warehouse.businessTypeName}");
+                return;
+            }
+
+            __instance.scroller.ReloadData(0f);
+        }
+
+        internal static Dictionary<string, int> handleFactoryPurchases(BuildingRegistration buildingRegistration)
+        {
+            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: {buildingRegistration.businessTypeName}");
+            var recipeItems = new Dictionary<string, int>();
+
+            buildingRegistration.itemInstances.Values
+                .OfType<FactoryWorkstationInstance>()
+                .Where(instance => !string.IsNullOrEmpty(instance.selectedRecipeId))
+                .ToList()
+                .ForEach(instance =>
+                {
+                    Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: selectedRecipe={instance.SelectedRecipe}");
+
+                    instance.SelectedRecipe.ingredients
+                        .ToList()
+                        .ForEach(ingredient =>
+                            recipeItems[ingredient.item] = recipeItems.GetValueOrDefault(ingredient.item) + ingredient.amount);
+                });
+
+            var weeklyHours = buildingRegistration.scheduleDays
+                .SelectMany(day => day.openingHourSlots)
+                .Sum(slot => slot.GetDurationInHours);
+
+            Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: weeklyHours={weeklyHours}");
+
+            recipeItems.Keys
+                .ToList()
+                .ForEach(key =>
+                {
+                    Logger.LogDebug($"OnPurchasingAgentProductsScrollerControllerLoadProducts: recipeItem={key}, total={recipeItems[key]}");
+                    recipeItems[key] *= weeklyHours;
+                });
+
+            return recipeItems;
         }
 
     }

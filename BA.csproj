@@ -31,6 +31,9 @@
     <Reference Include="BigAmbitions" Private="false">
       <HintPath>lib\BigAmbitions.dll</HintPath>
     </Reference>
+    <Reference Include="BigAmbitions.Factories" Private="false">
+      <HintPath>lib\BigAmbitions.Factories.dll</HintPath>
+    </Reference>
     <Reference Include="BigAmbitions.Items" Private="false">
       <HintPath>lib\BigAmbitions.Items.dll</HintPath>
     </Reference>
@@ -40,8 +43,11 @@
     <Reference Include="BigAmbitions.AI" Private="false">
       <HintPath>lib\BigAmbitions.AI.dll</HintPath>
     </Reference>
-        <Reference Include="DayNightCycle" Private="false">
+    <Reference Include="DayNightCycle" Private="false">
       <HintPath>lib\DayNightCycle.dll</HintPath>
+    </Reference>
+    <Reference Include="ExternalPlugins" Private="false">
+      <HintPath>lib\ExternalPlugins.dll</HintPath>
     </Reference>
     <Reference Include="HGExtensions" Private="false">
       <HintPath>lib\HGExtensions.dll</HintPath>
