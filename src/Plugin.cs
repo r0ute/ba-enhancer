@@ -30,7 +30,8 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_cinema", 1),
         ("ba:buildingtype_theater", 1),
         ("ba:buildingtype_office", 6),
-        ("ba:buildingtype_retail", 14)
+        ("ba:buildingtype_retail", 14),
+        ("ba:buildingtype_warehouse", 15)
     ];
 
     internal static new ManualLogSource Logger;
@@ -110,9 +111,14 @@ public class Plugin : BaseUnityPlugin
                     });
                 });
 
-            BIZ_SEARCH_BUILDING_TYPES.ForEach(searchBuildings);
+            BIZ_SEARCH_BUILDING_TYPES.ForEach(criteria =>
+                {
+                    if (criteria.buildingType == "ba:buildingtype_warehouse")
+                        searchWarehouses(criteria);
+                    else
+                        searchBuildings(criteria);
+                });
         }
-
         internal static void searchBuildings((string buildingType, int searchLimit) criteria)
         {
             BuildingHelper.AllNeighbourhoodBuildings
@@ -145,6 +151,40 @@ public class Plugin : BaseUnityPlugin
                         + $"type={entry.Building.BuildingType}, "
                         + $"customerCapacity={building.GetCustomerCapacity}, "
                         + $"trafficIndex={building.trafficIndex}, "
+                        + $"address={building.Address}");
+                });
+        }
+
+        internal static void searchWarehouses((string buildingType, int searchLimit) criteria)
+        {
+            BuildingHelper.AllNeighbourhoodBuildings
+                .SelectMany(neighbourhood => neighbourhood.Value
+                    .Where(building => !building.SpecialService
+                        && criteria.buildingType.Equals(building.BuildingType))
+                    .Select(building => new
+                    {
+                        Neighbourhood = neighbourhood.Key,
+                        Building = building
+                    }))
+                .GroupBy(entry => new
+                {
+                    entry.Neighbourhood,
+                    entry.Building.BuildingType
+                })
+                .SelectMany(group => group
+                    .OrderByDescending(entry => entry.Building.BuildingSize)
+                    .ThenByDescending(entry => entry.Building.BuildingVersion)
+                    .Take(criteria.searchLimit))
+                .OrderBy(entry => entry.Neighbourhood)
+                .ThenBy(entry => entry.Building.BuildingType)
+                .ToList()
+                .ForEach(entry =>
+                {
+                    var building = entry.Building;
+                    foundAddresses.Add(entry.Building.Address);
+                    Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
+                        + $"type={entry.Building.BuildingType}, "
+                        + $"size={building.BuildingSize}{building.BuildingVersion}, "
                         + $"address={building.Address}");
                 });
         }
@@ -230,7 +270,9 @@ public class Plugin : BaseUnityPlugin
                         new Dictionary<string, string> { { "businessType", $"{buildingRegistration.Neighborhood} {address} "
                         + $"{buildingRegistration.BuildingCached.BuildingType} "
                         + $"capacity={buildingRegistration.BuildingCached.GetCustomerCapacity} "
-                        + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}"} });
+                        + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}" 
+                        + $"size={buildingRegistration.BuildingCached.BuildingSize} {buildingRegistration.BuildingCached.BuildingVersion}"} 
+                    });
                 }
             });
         }
