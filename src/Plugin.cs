@@ -241,7 +241,6 @@ public class Plugin : BaseUnityPlugin
         {
             var productModel = __instance.data.First();
 
-            // TODO: remove smart delivery check later?
             if (!productModel.isTarget || productModel?.productRef?.assignedWarehouse == null)
             {
                 Logger.LogWarning($"OnPurchasingAgentProductsScrollerControllerLoadProducts: no assigned warehouse");
@@ -267,6 +266,7 @@ public class Plugin : BaseUnityPlugin
                 return;
             }
 
+            __instance.data.ForEach(productModel => productModel.UpdateAmount(itemsToPurchase.GetValueOrDefault(productModel.productRef.itemName)));
             __instance.scroller.ReloadData(0f);
         }
 
