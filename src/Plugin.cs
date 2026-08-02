@@ -1,11 +1,9 @@
 ﻿using System;
-using System.ArrayExtensions;
 using System.Collections.Generic;
 using System.Linq;
 using AI.Citizens;
 using BepInEx;
 using BepInEx.Logging;
-using BigAmbitions.Neighborhoods;
 using BigAmbitions.Rivals;
 using Buildings;
 using Controllers;
@@ -49,11 +47,102 @@ public class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
+        harmony.PatchAll(typeof(GameManagerPatches));
         harmony.PatchAll(typeof(VehiclePatches));
-        harmony.PatchAll(typeof(PricingPatches));
         harmony.PatchAll(typeof(BizPatches));
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+    }
+
+    class GameManagerPatches
+    {
+        [HarmonyPatch(typeof(GameManager), "Awake")]
+        [HarmonyPostfix]
+        static void OnGameManagerAwake()
+        {
+            NeighborhoodHelper.NeighborhoodsData
+                .ToList()
+                .ForEach(neighborhoodData =>
+                {
+                    SocialClass dominantSocialClass = SocialClass.Working;
+                    float maxSocialClassPercentage = neighborhoodData.workingClassPercentage;
+
+                    if (neighborhoodData.middleClassPercentage > maxSocialClassPercentage)
+                    {
+                        dominantSocialClass = SocialClass.Middle;
+                        maxSocialClassPercentage = neighborhoodData.middleClassPercentage;
+                    }
+
+                    if (neighborhoodData.upperClassClassPercentage > maxSocialClassPercentage)
+                    {
+                        dominantSocialClass = SocialClass.Upper;
+                        maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
+                    }
+
+                    float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
+                    Logger.LogDebug($"OnGameManagerAwake: neighbourhood={neighborhoodData.neighbourhood}, "
+                        + $"dominantSocialClass={dominantSocialClass}, "
+                        + $"socialClassPercentage={maxSocialClassPercentage}, "
+                        + $"maxAcceptableRelativePrice={maxAcceptableRelativePrice}, "
+                        + $"averagePriceIndex={CitizenHelper.averagePriceIndicesInNeighborhoods.Get(neighborhoodData.neighbourhood)}, "
+                        + $"marketingStrength={neighborhoodData.marketingStrength}, "
+                        + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}, "
+                        + $"minTrafficFor100Promotion={100 * (1 - neighborhoodData.marketingStrength)}");
+                });
+
+            BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
+            .ToList()
+            .ForEach(businessType =>
+            {
+                Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}");
+
+                businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
+                {
+                    Logger.LogDebug($"OnGameManagerAwake: dayFactorMultiplier: "
+                        + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
+                });
+
+                businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
+                {
+                    Logger.LogDebug($"OnGameManagerAwake: hourlyFactorMultiplier: "
+                        + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
+                });
+
+            });
+
+            BuildingHelper.AllNeighbourhoodBuildings
+            .SelectMany(neighbourhood => neighbourhood.Value
+                .Where(building => !building.SpecialService
+                    && BIZ_SEARCH_BUILING_TYPES.Contains(building.BuildingType)
+                    && building.trafficIndex >= BIZ_SEARCH_MIN_TRAFFIC_INDEX)
+                .Select(building => new
+                {
+                    Neighbourhood = neighbourhood.Key,
+                    Building = building
+                }))
+            .GroupBy(entry => new
+            {
+                entry.Neighbourhood,
+                entry.Building.BuildingType
+            })
+            .SelectMany(group => group
+                .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
+                .ThenByDescending(entry => entry.Building.trafficIndex)
+                .Take(BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD))
+            .OrderBy(entry => entry.Neighbourhood)
+            .ThenBy(entry => entry.Building.BuildingType)
+            .ToList()
+            .ForEach(entry =>
+            {
+                var building = entry.Building;
+
+                Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
+                    + $"type={entry.Building.BuildingType}, "
+                    + $"customerCapacity={building.GetCustomerCapacity}, "
+                    + $"trafficIndex={building.trafficIndex}, "
+                    + $"address={building.Address}");
+            });
+        }
     }
 
     class VehiclePatches
@@ -94,46 +183,6 @@ public class Plugin : BaseUnityPlugin
 
     }
 
-    class PricingPatches
-    {
-        [HarmonyPatch(typeof(CitizenHelper), nameof(CitizenHelper.Init))]
-        [HarmonyPostfix]
-        static void OnCitizenHelperInit()
-        {
-            NeighborhoodHelper.NeighborhoodsData
-                .ToList()
-                .ForEach(neighborhoodData =>
-                {
-                    SocialClass dominantSocialClass = SocialClass.Working;
-                    float maxSocialClassPercentage = neighborhoodData.workingClassPercentage;
-
-                    if (neighborhoodData.middleClassPercentage > maxSocialClassPercentage)
-                    {
-                        dominantSocialClass = SocialClass.Middle;
-                        maxSocialClassPercentage = neighborhoodData.middleClassPercentage;
-                    }
-
-                    if (neighborhoodData.upperClassClassPercentage > maxSocialClassPercentage)
-                    {
-                        dominantSocialClass = SocialClass.Upper;
-                        maxSocialClassPercentage = neighborhoodData.upperClassClassPercentage;
-                    }
-
-                    float maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
-                    Logger.LogDebug($"CitizenHelperInit: neighbourhood={neighborhoodData.neighbourhood}, "
-                        + $"dominantSocialClass={dominantSocialClass}, "
-                        + $"socialClassPercentage={maxSocialClassPercentage}, "
-                        + $"maxAcceptableRelativePrice={maxAcceptableRelativePrice}, "
-                        + $"averagePriceIndex={CitizenHelper.averagePriceIndicesInNeighborhoods.Get(neighborhoodData.neighbourhood)}, "
-                        + $"marketingStrength={neighborhoodData.marketingStrength}, "
-                        + $"customerDemandsWeight={neighborhoodData.customerDemandsWeight}, "
-                        + $"minTrafficFor100Promotion={100 * (1 - neighborhoodData.marketingStrength)}");
-                });
-
-        }
-
-    }
-
     class BizPatches
     {
         [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.SetAiOwned))]
@@ -152,8 +201,6 @@ public class Plugin : BaseUnityPlugin
             }
 
         }
-
-
 
         [HarmonyPatch(typeof(BuildingManager), "Awake")]
         [HarmonyPostfix]
@@ -182,70 +229,6 @@ public class Plugin : BaseUnityPlugin
                         + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}"} });
                 }
             });
-        }
-
-        [HarmonyPatch(typeof(BuildingManager), "Awake")]
-        [HarmonyPostfix]
-        static void OnBuildingManagerAwake2()
-        {
-            BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
-                .ToList()
-                .ForEach(businessType =>
-                {
-                    Logger.LogDebug($"OnBuildingManagerAwake2: businessType={businessType}");
-
-                    businessType.dayFactorMultipliers.ForEach(dayFactorMultiplier =>
-                    {
-                        Logger.LogDebug($"OnBuildingManagerAwake2: dayFactorMultiplier: "
-                            + $"dayOfWeek={dayFactorMultiplier.dayOfWeekOrdered}, multiplier={dayFactorMultiplier.multiplier}");
-                    });
-
-                    businessType.hourlyFactorMultipliers.ForEach(hourlyFactorMultiplier =>
-                    {
-                        Logger.LogDebug($"OnBuildingManagerAwake2: hourlyFactorMultiplier: "
-                            + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
-                    });
-
-                });
-        }
-
-        [HarmonyPatch(typeof(BuildingManager), "Awake")]
-        [HarmonyPostfix]
-        static void OnBuildingManagerAwake3()
-        {
-            BuildingHelper.AllNeighbourhoodBuildings
-                .SelectMany(neighbourhood => neighbourhood.Value
-                    .Where(building => !building.SpecialService
-                        && BIZ_SEARCH_BUILING_TYPES.Contains(building.BuildingType)
-                        && building.trafficIndex >= BIZ_SEARCH_MIN_TRAFFIC_INDEX)
-                    .Select(building => new
-                    {
-                        Neighbourhood = neighbourhood.Key,
-                        Building = building
-                    }))
-                .GroupBy(entry => new
-                {
-                    entry.Neighbourhood,
-                    entry.Building.BuildingType
-                })
-                .SelectMany(group => group
-                    .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
-                    .ThenByDescending(entry => entry.Building.trafficIndex)
-                    .Take(BIZ_SEARCH_MAX_BUILINGS_PER_NEIGHBORHOOD))
-                .OrderBy(entry => entry.Neighbourhood)
-                .ThenBy(entry => entry.Building.BuildingType)
-                .ToList()
-                .ForEach(entry =>
-                {
-                    var building = entry.Building;
-
-                    Logger.LogDebug($"OnBuildingManagerAwake3: neighborhood={entry.Neighbourhood}, "
-                        + $"type={entry.Building.BuildingType}, "
-                        + $"customerCapacity={building.GetCustomerCapacity}, "
-                        + $"trafficIndex={building.trafficIndex}, "
-                        + $"address={building.Address}");
-                });
-
         }
 
         internal static bool isBuldingMatched((string expectedNeighborhood, string expectedBuildingType, int minCustomerCapacity, int minTrafficIndex) expectedBuilding,
