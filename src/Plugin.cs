@@ -448,7 +448,7 @@ public class Plugin : BaseUnityPlugin
 
             if (BusinessTypeHelper.GetData(buildingRegistration).HasTag(TagRef.Businesstag.customersneedpaperbags))
             {
-                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum();
+                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum() * BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER;
             }
 
             planDestination.stockTargets.Clear();
