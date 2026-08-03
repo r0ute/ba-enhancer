@@ -10,6 +10,7 @@ using BigAmbitions.Tags;
 using Buildings;
 using Controllers;
 using Entities;
+using Extensions;
 using HarmonyLib;
 using Helpers;
 using UI.Smartphone.Apps.BizMan;
@@ -471,6 +472,7 @@ public class Plugin : BaseUnityPlugin
                     (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
                     || buildingRegistration.BuildingOwnedByPlayer)
                 .OrderByDescending(buildingRegistration => buildingRegistration.businessTypeName)
+                .ThenBy(buildingRegistration => buildingRegistration.GetDisplayName())
                 .ToList()
                 .ForEach(buildingRegistration =>
                 {
@@ -485,5 +487,28 @@ public class Plugin : BaseUnityPlugin
         [HarmonyReversePatch]
         [HarmonyPatch(typeof(BusinessScrollerController), "IsVisibleBusiness")]
         static bool IsVisibleBusiness(BuildingRegistration registration) => throw new NotImplementedException();
+
+
+        [HarmonyPatch(typeof(WarehouseList), "Load")]
+        [HarmonyPrefix]
+        static void OnWarehouseListLoad(WarehouseList __instance, ref bool __runOriginal)
+        {
+            __runOriginal = false;
+
+            Logger.LogDebug($"OnWarehouseListLoad: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
+            Traverse.Create(__instance).Field("warehouseEntry").GetValue<Transform>().ResetTemplate();
+            SaveGameManager.Current.BuildingRegistrations
+                .OrderByDescending(x => x.businessTypeName)
+                .ThenBy(x => x.GetDisplayName())
+                .Where(x => x.RentedByPlayer && x.GetBuildingType() == "ba:buildingtype_warehouse")
+                .ToList()
+                .ForEach(item => SetUpEntry(__instance, (Warehouse) item));
+        }
+
+
+        [HarmonyReversePatch]
+        [HarmonyPatch(typeof(WarehouseList), "SetUpEntry")]
+        static void SetUpEntry(object instance, Warehouse warehouse) => throw new NotImplementedException();
+
     }
 }
