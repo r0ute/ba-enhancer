@@ -27,8 +27,8 @@ public class Plugin : BaseUnityPlugin
     ];
 
     internal static readonly List<(string buildingType, int searchLimit)> BIZ_SEARCH_BUILDING_TYPES = [
-        ("ba:buildingtype_cinema", 1),
-        ("ba:buildingtype_theater", 1),
+        ("ba:buildingtype_cinema", 3),
+        ("ba:buildingtype_theater", 3),
         ("ba:buildingtype_office", 6),
         ("ba:buildingtype_retail", 14),
         ("ba:buildingtype_warehouse", 15)
@@ -124,8 +124,7 @@ public class Plugin : BaseUnityPlugin
             BuildingHelper.AllNeighbourhoodBuildings
                 .SelectMany(neighbourhood => neighbourhood.Value
                     .Where(building => !building.SpecialService
-                        && criteria.buildingType.Equals(building.BuildingType)
-                        && building.trafficIndex >= neighborhoodMinTrafficFor100Promotion.Get(neighbourhood.Key))
+                        && criteria.buildingType.Equals(building.BuildingType))
                     .Select(building => new
                     {
                         Neighbourhood = neighbourhood.Key,
@@ -151,6 +150,7 @@ public class Plugin : BaseUnityPlugin
                         + $"type={entry.Building.BuildingType}, "
                         + $"customerCapacity={building.GetCustomerCapacity}, "
                         + $"trafficIndex={building.trafficIndex}, "
+                        + $"100Promotion={building.trafficIndex >= neighborhoodMinTrafficFor100Promotion.Get(entry.Neighbourhood)}, "
                         + $"address={building.Address}");
                 });
         }
