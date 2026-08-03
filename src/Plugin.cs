@@ -394,11 +394,9 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(LogisticsManagerPlanUI), "LoadProducts")]
         [HarmonyPrefix]
-        static void OnLogisticsManagerPlanUILoadProducts(ref LogisticsManagerPlanUI __instance,
-            LogisticsManagerPlanDestination planDestination, LogisticsManagerDestinationUI destinationEntry)
+        static void OnLogisticsManagerPlanUILoadProducts(LogisticsManagerPlanDestination planDestination)
         {
             Logger.LogInfo($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, stockTargetsCount={planDestination.stockTargets.Count}");
-
             var buildingRegistration = BuildingHelper.GetBuildingRegistration(planDestination.deliveryTargetAddress);
 
             if (buildingRegistration?.GetBuildingType() != "ba:buildingtype_retail")
@@ -406,41 +404,38 @@ public class Plugin : BaseUnityPlugin
                 return;
             }
 
-            Dictionary<string, int> itemCapacity = [];
-            var totalItemCapacity = 0;
-
-            foreach (var itemInstance in buildingRegistration.itemInstances.Values)
-            {
-                if ((itemInstance.ItemCached.type & ItemType.ShowcaseShelf) != 0)
+            var itemCapacity = buildingRegistration.itemInstances.Values
+                .Where(itemInstance => (itemInstance.ItemCached.type & ItemType.ShowcaseShelf) != 0)
+                .Select(itemInstance => new
                 {
-                    CargoInstance stockInstance = itemInstance.GetStockInstance();
+                    ItemInstance = itemInstance,
+                    StockInstance = itemInstance.GetStockInstance()
+                })
+                .Where(x => !string.IsNullOrEmpty(x.StockInstance.itemName)
+                    && (ItemsGetter.GetByName(x.StockInstance.itemName).type & ItemType.ServiceProduct) == 0)
+                .GroupBy(x => x.StockInstance.itemName)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour));
 
-					if (!string.IsNullOrEmpty(stockInstance.itemName) 
-                        && (ItemsGetter.GetByName(stockInstance.itemName).type & ItemType.ServiceProduct) == 0)
-					{
-						itemCapacity[stockInstance.itemName] = itemCapacity.GetValueOrDefault(stockInstance.itemName)
-                            + itemInstance.ItemCached.addedCustomersPerHour;
-                        totalItemCapacity += itemInstance.ItemCached.addedCustomersPerHour;
-
-                        Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: address={buildingRegistration.GetDisplayName()}, "
-                            + $"itemName={stockInstance.itemName}, "
-                            + $"addedCustomersPerHour={itemInstance.ItemCached.addedCustomersPerHour}");
-					}
-                }
-            }
+            itemCapacity.ToList()
+                .ForEach(entry =>
+                {
+                    Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: address={buildingRegistration.GetDisplayName()}, "
+                        + $"itemName={entry.Key}, "
+                        + $"addedCustomersPerHour={entry.Value}");
+                });
 
             if (BusinessTypeHelper.GetData(buildingRegistration).HasTag(TagRef.Businesstag.customersneedpaperbags))
             {
-                itemCapacity.Add("ba:itemname_paperbag", totalItemCapacity);
+                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum();
             }
 
             planDestination.stockTargets.Clear();
-
-            foreach (var entry in itemCapacity)
-            {
-                planDestination.stockTargets.Add(new ItemAmountTarget(entry.Key, entry.Value));
-            }
-
+            itemCapacity
+                .Select(entry => new ItemAmountTarget(entry.Key, entry.Value))
+                .ToList()
+                .ForEach(planDestination.stockTargets.Add);
         }
     }
 }
