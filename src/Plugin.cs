@@ -12,6 +12,7 @@ using Controllers;
 using Entities;
 using HarmonyLib;
 using Helpers;
+using UI.Smartphone.Apps.BizMan;
 using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 using UI.Smartphone.Apps.Contacts;
@@ -37,7 +38,7 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_warehouse", 15)
     ];
 
-     internal static readonly int BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER = 4;
+    internal static readonly int BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER = 4;
 
     internal static new ManualLogSource Logger;
 
@@ -85,7 +86,7 @@ public class Plugin : BaseUnityPlugin
 
                     var maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
                     var minTrafficFor100Promotion = Mathf.RoundToInt(100 * (1 - neighborhoodData.marketingStrength));
-                    
+
                     if (!neighborhoodMinTrafficFor100Promotion.ContainsKey(neighborhoodData.neighbourhood))
                     {
                         neighborhoodMinTrafficFor100Promotion.Add(neighborhoodData.neighbourhood, minTrafficFor100Promotion);
@@ -455,5 +456,34 @@ public class Plugin : BaseUnityPlugin
                 .ToList()
                 .ForEach(planDestination.stockTargets.Add);
         }
+
+
+        [HarmonyPatch(typeof(BusinessScrollerController), "PopulateAllModels")]
+        [HarmonyPrefix]
+        static void OnBusinessScrollerControllerPopulateAllModels(ref BusinessScrollerController __instance, ref bool __runOriginal,
+            List<BusinessCellView.BusinessModel> allModels)
+        {
+            __runOriginal = false;
+
+            Logger.LogDebug($"OnBusinessScrollerControllerPopulateAllModels: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
+            SaveGameManager.Current.BuildingRegistrations
+                .Where(buildingRegistration =>
+                    (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
+                    || buildingRegistration.BuildingOwnedByPlayer)
+                .OrderByDescending(buildingRegistration => buildingRegistration.businessTypeName)
+                .ToList()
+                .ForEach(buildingRegistration =>
+                {
+                    allModels.Add(
+                        buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration)
+                            ? new BusinessCellView.BusinessModel(buildingRegistration)
+                            : new BusinessCellView.BusinessModel(buildingRegistration, isRealEstate: true)
+                    );
+                });
+        }
+
+        [HarmonyReversePatch]
+        [HarmonyPatch(typeof(BusinessScrollerController), "IsVisibleBusiness")]
+        static bool IsVisibleBusiness(BuildingRegistration registration) => throw new NotImplementedException();
     }
 }
