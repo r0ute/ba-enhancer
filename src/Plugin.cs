@@ -489,7 +489,7 @@ public class Plugin : BaseUnityPlugin
         static bool IsVisibleBusiness(BuildingRegistration registration) => throw new NotImplementedException();
 
 
-        [HarmonyPatch(typeof(WarehouseList), "Load")]
+        [HarmonyPatch(typeof(WarehouseList), nameof(WarehouseList.Load))]
         [HarmonyPrefix]
         static void OnWarehouseListLoad(WarehouseList __instance, ref bool __runOriginal)
         {
@@ -502,13 +502,79 @@ public class Plugin : BaseUnityPlugin
                 .ThenBy(x => x.GetDisplayName())
                 .Where(x => x.RentedByPlayer && x.GetBuildingType() == "ba:buildingtype_warehouse")
                 .ToList()
-                .ForEach(item => SetUpEntry(__instance, (Warehouse) item));
+                .ForEach(item => SetUpEntry(__instance, (Warehouse)item));
         }
 
 
         [HarmonyReversePatch]
         [HarmonyPatch(typeof(WarehouseList), "SetUpEntry")]
         static void SetUpEntry(object instance, Warehouse warehouse) => throw new NotImplementedException();
+
+
+        [HarmonyPatch(typeof(ItemHelper), nameof(ItemHelper.GetLowestMarketPrice))]
+        [HarmonyPrefix]
+        static void OnItemHelperGetLowestMarketPrice(ref bool __runOriginal, ref float __result, string itemName, string neighborhood, bool forceUpdate = false)
+        {
+            __runOriginal = false;
+
+
+            if (!forceUpdate && ItemHelper.LmpDictionary.TryGetValue((itemName, neighborhood), out var value))
+            {
+                __result = value;
+                return;
+            }
+
+            if (forceUpdate && ItemHelper.LmpDictionary.ContainsKey((itemName, neighborhood)))
+            {
+                ItemHelper.LmpDictionary.Remove((itemName, neighborhood));
+            }
+
+            float lowestPrice = -1f;
+            float lowestPriceExcludePlayer = lowestPrice;
+
+            foreach (BuildingRegistration buildingRegistration in SaveGameManager.Current.BuildingRegistrations)
+            {
+                if (buildingRegistration.temporarilyClosed || buildingRegistration.retailPrices == null || buildingRegistration.Neighborhood != neighborhood || string.IsNullOrEmpty(buildingRegistration.BusinessName))
+                {
+                    continue;
+                }
+
+                foreach (RetailPrice retailPrice in buildingRegistration.retailPrices)
+                {
+                    if (!(retailPrice.itemName != itemName) && (buildingRegistration.RentedByPlayer || !(PlayerItemPurchaser.GetShelfFillState(itemName, buildingRegistration) <= 0f)))
+                    {
+                        if (lowestPrice < 0f || retailPrice.price < lowestPrice)
+                        {
+                            lowestPrice = retailPrice.price;
+                        }
+
+                        if (!(buildingRegistration.RentedByPlayer || buildingRegistration.BuildingOwnedByPlayer)
+                            && (lowestPriceExcludePlayer < 0f || retailPrice.price < lowestPriceExcludePlayer))
+                        {
+                            lowestPriceExcludePlayer = retailPrice.price;
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            if (lowestPrice < 0f)
+            {
+                lowestPrice = ItemHelper.CalculateOptimalPriceByNeighborhood(itemName, neighborhood);
+            }
+
+            if (lowestPriceExcludePlayer < 0f)
+            {
+                lowestPriceExcludePlayer = ItemHelper.CalculateOptimalPriceByNeighborhood(itemName, neighborhood);
+            }
+
+            ItemHelper.LmpDictionary.Add((itemName, neighborhood), lowestPrice);
+
+            __result = forceUpdate ? lowestPriceExcludePlayer : lowestPrice;
+            Logger.LogDebug($"OnItemHelperGetLowestMarketPrice: neighborhood={neighborhood}, itemName={itemName}, lowestPrice={__result}, forceUpdate={forceUpdate}");
+
+        }
 
     }
 }
