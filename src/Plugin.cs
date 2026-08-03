@@ -234,7 +234,6 @@ public class Plugin : BaseUnityPlugin
     class BizPatches
     {
         [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.SetAiOwned))]
-        [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.LoadLeftSide))]
         [HarmonyPostfix]
         static void OnBizManPresentationSetAiOwned(ref BizManPresentation __instance)
         {
@@ -249,6 +248,18 @@ public class Plugin : BaseUnityPlugin
                 * RivalsHelper.GetOvertakeBusinessAcceptRate(bizManBusiness.buildingRegistration.businessOwnerRivalId, bizManBusiness.buildingRegistration.Address);
             Logger.LogDebug($"OnBizManPresentationSetAiOwned: bizManBusiness={bizManBusiness.buildingRegistration.Address}, minOfferPrice={minOfferPrice}");
             __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 1, 0, MidpointRounding.AwayFromZero).ToString();
+        }
+
+        [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.LoadLeftSide))]
+        [HarmonyPostfix]
+        static void OnBizManPresentationSLoadLeftSide(ref BizManPresentation __instance)
+        {
+            var bizManBusiness = Traverse.Create(__instance).Field("bizManBusiness").GetValue() as BizManBusiness;
+
+            if (bizManBusiness.building.SpecialService != null)
+            {
+                return;
+            }
 
             BuildingForSale buildingForSale = SaveGameManager.Current.buildingsForSale.FirstOrDefault((BuildingForSale x) => x.address == bizManBusiness.building.Address);
             float minBuildingPrice = (buildingForSale == null)
