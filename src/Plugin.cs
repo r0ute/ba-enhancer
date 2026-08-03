@@ -83,7 +83,11 @@ public class Plugin : BaseUnityPlugin
 
                     var maxAcceptableRelativePrice = CitizenHelper.MaxAcceptableRelativePrice(dominantSocialClass, neighborhoodData.neighbourhood);
                     var minTrafficFor100Promotion = Mathf.RoundToInt(100 * (1 - neighborhoodData.marketingStrength));
-                    neighborhoodMinTrafficFor100Promotion.Add(neighborhoodData.neighbourhood, minTrafficFor100Promotion);
+                    
+                    if (!neighborhoodMinTrafficFor100Promotion.ContainsKey(neighborhoodData.neighbourhood))
+                    {
+                        neighborhoodMinTrafficFor100Promotion.Add(neighborhoodData.neighbourhood, minTrafficFor100Promotion);
+                    }
 
                     Logger.LogDebug($"OnGameManagerAwake: neighbourhood={neighborhoodData.neighbourhood}, "
                         + $"dominantSocialClass={dominantSocialClass}, "
