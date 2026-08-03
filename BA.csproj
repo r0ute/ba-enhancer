@@ -52,6 +52,9 @@
     <Reference Include="HGExtensions" Private="false">
       <HintPath>lib\HGExtensions.dll</HintPath>
     </Reference>
+    <Reference Include="HGPlugins" Private="false">
+      <HintPath>lib\HGPlugins.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.TextMeshPro" Private="false">
       <HintPath>lib\Unity.TextMeshPro.dll</HintPath>
     </Reference>

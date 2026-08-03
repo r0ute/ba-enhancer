@@ -4,12 +4,15 @@ using System.Linq;
 using AI.Citizens;
 using BepInEx;
 using BepInEx.Logging;
+using BigAmbitions.Items;
 using BigAmbitions.Rivals;
+using BigAmbitions.Tags;
 using Buildings;
 using Controllers;
 using Entities;
 using HarmonyLib;
 using Helpers;
+using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 using UI.Smartphone.Apps.Contacts;
 using UnityEngine;
@@ -248,7 +251,7 @@ public class Plugin : BaseUnityPlugin
             __instance.offerAmountInputField.text = Math.Round(minOfferPrice + 1, 0, MidpointRounding.AwayFromZero).ToString();
 
             BuildingForSale buildingForSale = SaveGameManager.Current.buildingsForSale.FirstOrDefault((BuildingForSale x) => x.address == bizManBusiness.building.Address);
-            float minBuildingPrice = (buildingForSale == null) 
+            float minBuildingPrice = (buildingForSale == null)
                 ? (bizManBusiness.building.GetMarketValue()
                     * (1f + RivalsHelper.GetBuyBuildingAcceptRate(bizManBusiness.buildingRegistration.buildingOwnerRivalId) / 100f))
                 : (buildingForSale.buildingPrice * buildingForSale.acceptOfferRate);
@@ -388,5 +391,56 @@ public class Plugin : BaseUnityPlugin
             return recipeItems;
         }
 
+
+        [HarmonyPatch(typeof(LogisticsManagerPlanUI), "LoadProducts")]
+        [HarmonyPrefix]
+        static void OnLogisticsManagerPlanUILoadProducts(ref LogisticsManagerPlanUI __instance,
+            LogisticsManagerPlanDestination planDestination, LogisticsManagerDestinationUI destinationEntry)
+        {
+            Logger.LogInfo($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, stockTargetsCount={planDestination.stockTargets.Count}");
+
+            var buildingRegistration = BuildingHelper.GetBuildingRegistration(planDestination.deliveryTargetAddress);
+
+            if (buildingRegistration?.GetBuildingType() != "ba:buildingtype_retail")
+            {
+                return;
+            }
+
+            Dictionary<string, int> itemCapacity = [];
+            var totalItemCapacity = 0;
+
+            foreach (var itemInstance in buildingRegistration.itemInstances.Values)
+            {
+                if ((itemInstance.ItemCached.type & ItemType.ShowcaseShelf) != 0)
+                {
+                    CargoInstance stockInstance = itemInstance.GetStockInstance();
+
+					if (!string.IsNullOrEmpty(stockInstance.itemName) 
+                        && (ItemsGetter.GetByName(stockInstance.itemName).type & ItemType.ServiceProduct) == 0)
+					{
+						itemCapacity[stockInstance.itemName] = itemCapacity.GetValueOrDefault(stockInstance.itemName)
+                            + itemInstance.ItemCached.addedCustomersPerHour;
+                        totalItemCapacity += itemInstance.ItemCached.addedCustomersPerHour;
+
+                        Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: address={buildingRegistration.GetDisplayName()}, "
+                            + $"itemName={stockInstance.itemName}, "
+                            + $"addedCustomersPerHour={itemInstance.ItemCached.addedCustomersPerHour}");
+					}
+                }
+            }
+
+            if (BusinessTypeHelper.GetData(buildingRegistration).HasTag(TagRef.Businesstag.customersneedpaperbags))
+            {
+                itemCapacity.Add("ba:itemname_paperbag", totalItemCapacity);
+            }
+
+            planDestination.stockTargets.Clear();
+
+            foreach (var entry in itemCapacity)
+            {
+                planDestination.stockTargets.Add(new ItemAmountTarget(entry.Key, entry.Value));
+            }
+
+        }
     }
 }
