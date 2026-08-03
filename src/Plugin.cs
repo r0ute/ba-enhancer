@@ -471,7 +471,8 @@ public class Plugin : BaseUnityPlugin
                 .Where(buildingRegistration =>
                     (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
                     || buildingRegistration.BuildingOwnedByPlayer)
-                .OrderByDescending(buildingRegistration => buildingRegistration.businessTypeName)
+                .OrderByDescending(buildingRegistration => 
+                    buildingRegistration.businessTypeName == "ba:businesstype_empty" ? "" : buildingRegistration.businessTypeName)
                 .ThenBy(buildingRegistration => buildingRegistration.GetDisplayName())
                 .ToList()
                 .ForEach(buildingRegistration =>
