@@ -37,6 +37,8 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_warehouse", 15)
     ];
 
+     internal static readonly int BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER = 4;
+
     internal static new ManualLogSource Logger;
 
     internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
@@ -431,7 +433,8 @@ public class Plugin : BaseUnityPlugin
                 .GroupBy(x => x.StockInstance.itemName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour));
+                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour
+                        * BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER));
 
             itemCapacity.ToList()
                 .ForEach(entry =>
