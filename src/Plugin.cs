@@ -19,6 +19,7 @@ using UI.Smartphone.Apps.BizMan;
 using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 using UI.Smartphone.Apps.Contacts;
+using UI.Smartphone.Apps.MarketInsider;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements.Collections;
@@ -41,6 +42,8 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_retail", 14),
         ("ba:buildingtype_warehouse", 15)
     ];
+
+    internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
 
     internal static new ManualLogSource Logger;
 
@@ -613,7 +616,7 @@ public class Plugin : BaseUnityPlugin
                 return;
             }
 
-            var lowestMarketPrice = ItemHelper.GetLowestMarketPrice(data.Item.itemName,data.Neighborhood, forceUpdate: true);
+            var lowestMarketPrice = ItemHelper.GetLowestMarketPrice(data.Item.itemName, data.Neighborhood, forceUpdate: true);
             var optimalPrice = Mathf.Max(0f, Mathf.Round((lowestMarketPrice - 0.01f) * 100f) / 100f);
 
             data.RetailPriceReference.price = optimalPrice;
@@ -621,6 +624,31 @@ public class Plugin : BaseUnityPlugin
 
             var retailPrice = Traverse.Create(__instance).Field("retailPrice").GetValue<TMP_InputField>();
             retailPrice?.SetTextWithoutNotify(optimalPrice.ToString("F2", CultureInfo.CurrentCulture));
+        }
+
+        [HarmonyPatch(typeof(MarketDemandCellView), "SetData")]
+        [HarmonyPostfix]
+        static void OnMarketDemandCellViewSetData(MarketDemandCellView __instance, MarketDemandCellView.DemandModel data)
+        {
+            if (data == null || string.IsNullOrEmpty(data.ItemName))
+            {
+                return;
+            }
+
+            var neighborhood = Traverse.Create(__instance.GetComponentInParent<MarketDemandScrollerController>())
+                .Field("_selectedNeighbourhood").GetValue<string>();
+
+            if (string.IsNullOrEmpty(neighborhood) || !ItemHelper.HasPlayerMonopoly(data.ItemName, neighborhood))
+            {
+                return;
+            }
+
+            var lowestMarketPrice = Traverse.Create(__instance).Field("lowestMarketPrice").GetValue<TextMeshProUGUI>();
+
+            if (lowestMarketPrice != null)
+            {
+                lowestMarketPrice.text += $" {BIZ_PLAYER_MONOPOLY_INDICATOR}";
+            }
         }
     }
 }
