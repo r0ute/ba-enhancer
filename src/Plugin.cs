@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using AI.Citizens;
 using BepInEx;
@@ -13,6 +14,7 @@ using Entities;
 using Extensions;
 using HarmonyLib;
 using Helpers;
+using TMPro;
 using UI.Smartphone.Apps.BizMan;
 using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 using UI.Smartphone.Apps.BizMan.PurchasingAgent;
@@ -600,6 +602,25 @@ public class Plugin : BaseUnityPlugin
 
                 return;
             }
+        }
+
+        [HarmonyPatch(typeof(InventoryProductCellView), "SetData")]
+        [HarmonyPostfix]
+        static void OnInventoryProductCellViewSetData(ref InventoryProductCellView __instance, InventoryProductCellView.InventoryProductModel data)
+        {
+            if (data == null || data.Item == null || data.Item.HasTag(TagRef.Itemtag.isbag))
+            {
+                return;
+            }
+
+            var lowestMarketPrice = ItemHelper.GetLowestMarketPrice(data.Item.itemName,data.Neighborhood, forceUpdate: true);
+            var optimalPrice = Mathf.Max(0f, Mathf.Round((lowestMarketPrice - 0.01f) * 100f) / 100f);
+
+            data.RetailPriceReference.price = optimalPrice;
+            data.StoredRetailPriceReference.price = optimalPrice;
+
+            var retailPrice = Traverse.Create(__instance).Field("retailPrice").GetValue<TMP_InputField>();
+            retailPrice?.SetTextWithoutNotify(optimalPrice.ToString("F2", CultureInfo.CurrentCulture));
         }
     }
 }
