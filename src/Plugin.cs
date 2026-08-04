@@ -70,6 +70,7 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnGameManagerAwake()
         {
+            Logger.LogInfo($"OnGameManagerAwake: NeighborhoodsData");
             NeighborhoodHelper.NeighborhoodsData
                 .ToList()
                 .ForEach(neighborhoodData =>
@@ -107,6 +108,7 @@ public class Plugin : BaseUnityPlugin
                         + $"minTrafficFor100Promotion={minTrafficFor100Promotion}");
                 });
 
+            Logger.LogInfo($"OnGameManagerAwake: Opening Hours");
             BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
                 .ToList()
                 .ForEach(businessType =>
@@ -126,6 +128,25 @@ public class Plugin : BaseUnityPlugin
                     });
                 });
 
+            Logger.LogInfo($"OnGameManagerAwake: Products with reduced demand");
+            BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
+                .Where(businessType => businessType.businessProducts.Any(product => product.impact < 1))
+                .ToList()
+                .ForEach(businessType =>
+                {
+                    Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}");
+
+                    businessType.businessProducts
+                        .Where(product => product.impact < 1)
+                        .ToList()
+                        .ForEach(product =>
+                        {
+                            Logger.LogDebug($"OnGameManagerAwake: itemName={ItemsGetter.GetByName(product.itemName)}, "
+                                + $"impact={product.impact}");
+                        });
+                });
+
+            Logger.LogInfo($"OnGameManagerAwake: Best buildings to purchase");
             BIZ_SEARCH_BUILDING_TYPES.ForEach(criteria =>
                 {
                     if (criteria.buildingType == "ba:buildingtype_warehouse")
@@ -229,7 +250,7 @@ public class Plugin : BaseUnityPlugin
 
             foreach (var truckId in VEHICLE_MISSING_TRUCK_IDS)
             {
-                Logger.LogInfo($"SetListOfVehiclesForSale: TryAddVehicleByVehicleType truckId={truckId}");
+                Logger.LogDebug($"SetListOfVehiclesForSale: TryAddVehicleByVehicleType truckId={truckId}");
                 TryAddVehicleByVehicleType(__instance, truckId);
             }
 
@@ -316,8 +337,6 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnPurchasingAgentPlanUIStartOrder(ref PurchasingAgentPlanUI __instance)
         {
-            Logger.LogInfo($"OnPurchasingAgentPlanUIStartOrder: Start");
-
             var warehouses = __instance.productsScrollerController.data
                 .Where(product => product.isTarget && product?.productRef?.assignedWarehouse != null)
                 .Select(product => product.warehouses
@@ -375,7 +394,6 @@ public class Plugin : BaseUnityPlugin
                         + $"amount={productModel.productRef.amount}");
                 });
             __instance.productsScrollerController.scroller.ReloadData(0f);
-            Logger.LogInfo($"OnPurchasingAgentPlanUIStartOrder: End");
         }
 
         internal static Dictionary<string, int> handleFactoryPurchases(BuildingRegistration buildingRegistration)
@@ -430,7 +448,7 @@ public class Plugin : BaseUnityPlugin
                 .FirstOrDefault()?
                 .openingHourSlots
                 .Sum(slot => slot.GetDurationInHours) ?? 0;
-            Logger.LogInfo($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, "
+            Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, "
                 + $"customerCapacity={buildingRegistration.customerCapacity}, "
                 + $"dailyHours={dailyHours}"
                 + $"stockTargetsCount={planDestination.stockTargets.Count}");
