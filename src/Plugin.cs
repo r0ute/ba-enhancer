@@ -282,7 +282,7 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPostfix]
         static void OnBuildingManagerAwake()
         {
-            GlobalEvents.onBuildingRegistrationChange = (Action<Address>)Delegate.Combine(GlobalEvents.onBuildingRegistrationChange, (Action<Address>)delegate (Address address)
+            GlobalEvents.onBuildingRegistrationChange = (Action<Address>)Delegate.Combine(GlobalEvents.onBuildingRegistrationChange, delegate (Address address)
             {
 
                 var buildingRegistration = BuildingHelper.GetBuildingRegistration(address);
@@ -294,7 +294,7 @@ public class Plugin : BaseUnityPlugin
                     + $"trafficIndex={buildingRegistration.BuildingCached.trafficIndex}, "
                     + $"availableForRent={buildingRegistration.AvailableForRent}");
 
-                if (buildingRegistration.AvailableForRent && foundAddresses.Contains(address))
+                if (!buildingRegistration.BuildingOwnedByPlayer && !buildingRegistration.RentedByPlayer && foundAddresses.Contains(address))
                 {
                     var contact = Contact.GetContact("market_insider", ContactCategoryName.General, "Market Insider");
                     GameManager.SendTextMessage(contact, "ba:messagetype_contacts_message_not_implemented",
@@ -471,7 +471,7 @@ public class Plugin : BaseUnityPlugin
                 .Where(buildingRegistration =>
                     (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
                     || buildingRegistration.BuildingOwnedByPlayer)
-                .OrderByDescending(buildingRegistration => 
+                .OrderByDescending(buildingRegistration =>
                     buildingRegistration.businessTypeName == "ba:businesstype_empty" ? "" : buildingRegistration.businessTypeName)
                 .ThenBy(buildingRegistration => buildingRegistration.GetDisplayName())
                 .ToList()
