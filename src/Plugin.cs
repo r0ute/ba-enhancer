@@ -39,8 +39,6 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_warehouse", 15)
     ];
 
-    internal static readonly int BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER = 4;
-
     internal static new ManualLogSource Logger;
 
     internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
@@ -415,13 +413,21 @@ public class Plugin : BaseUnityPlugin
         [HarmonyPrefix]
         static void OnLogisticsManagerPlanUILoadProducts(LogisticsManagerPlanDestination planDestination)
         {
-            Logger.LogInfo($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, stockTargetsCount={planDestination.stockTargets.Count}");
             var buildingRegistration = BuildingHelper.GetBuildingRegistration(planDestination.deliveryTargetAddress);
 
             if (buildingRegistration?.GetBuildingType() != "ba:buildingtype_retail")
             {
                 return;
             }
+
+            var dailyHours = buildingRegistration.scheduleDays
+                .FirstOrDefault()?
+                .openingHourSlots
+                .Sum(slot => slot.GetDurationInHours) ?? 0;
+            Logger.LogInfo($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, "
+                + $"customerCapacity={buildingRegistration.customerCapacity}, "
+                + $"dailyHours={dailyHours}"
+                + $"stockTargetsCount={planDestination.stockTargets.Count}");
 
             var itemCapacity = buildingRegistration.itemInstances.Values
                 .Where(itemInstance => (itemInstance.ItemCached.type & ItemType.ShowcaseShelf) != 0)
@@ -435,20 +441,19 @@ public class Plugin : BaseUnityPlugin
                 .GroupBy(x => x.StockInstance.itemName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour
-                        * BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER));
+                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour * dailyHours));
 
             itemCapacity.ToList()
                 .ForEach(entry =>
                 {
                     Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: address={buildingRegistration.GetDisplayName()}, "
                         + $"itemName={entry.Key}, "
-                        + $"addedCustomersPerHour={entry.Value}");
+                        + $"deliveryAmount={entry.Value}");
                 });
 
             if (BusinessTypeHelper.GetData(buildingRegistration).HasTag(TagRef.Businesstag.customersneedpaperbags))
             {
-                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum() * BIZ_WAREHOUSE_RETAIIL_DELIVERY_MULTIPLIER;
+                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum();
             }
 
             planDestination.stockTargets.Clear();
