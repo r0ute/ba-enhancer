@@ -58,6 +58,9 @@
     <Reference Include="Unity.TextMeshPro" Private="false">
       <HintPath>lib\Unity.TextMeshPro.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.UI" Private="false">
+      <HintPath>lib\Unity.UnityEngine.UI</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

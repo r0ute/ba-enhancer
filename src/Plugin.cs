@@ -18,6 +18,7 @@ using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 using UI.Smartphone.Apps.Contacts;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.UIElements.Collections;
 
 namespace BA.src;
@@ -582,5 +583,23 @@ public class Plugin : BaseUnityPlugin
 
         }
 
+        [HarmonyPatch(typeof(InventoryProductCellView), "UpdateAmountBackground")]
+        [HarmonyPrefix]
+        static void OnInventoryProductCellViewUpdateAmountBackground(ref InventoryProductCellView __instance, ref bool __runOriginal)
+        {
+            var amountBackground = Traverse.Create(__instance).Field("_amountBackground").GetValue<Image>();
+            var data = Traverse.Create(__instance).Field("_data").GetValue<InventoryProductCellView.InventoryProductModel>();
+
+            var lowestMarketPrice = ItemHelper.GetLowestMarketPrice(data.Item.itemName, data.Neighborhood, forceUpdate: true);
+            var retailPrice = data.RetailPriceReference.price;
+
+            if (retailPrice != 0f && Mathf.RoundToInt(retailPrice * 100) == Mathf.RoundToInt((lowestMarketPrice - 0.01f) * 100))
+            {
+                amountBackground.color = InstanceBehavior<GlobalReferences>.Instance.colors.green;
+                __runOriginal = false;
+
+                return;
+            }
+        }
     }
 }
