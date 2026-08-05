@@ -146,6 +146,18 @@ public class Plugin : BaseUnityPlugin
                         });
                 });
 
+            Logger.LogInfo($"OnGameManagerAwake: Business max purchase amount per product");
+
+            BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
+                .Where(businessType => businessType.maxAmountPerProduct > 1)
+                .OrderByDescending(businessType => businessType.maxAmountPerProduct)
+                .ThenBy(businessType => businessType.businessTypeName)
+                .ToList()
+                .ForEach(businessType =>
+                {
+                    Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}, maxAmountPerProduct={businessType.maxAmountPerProduct}");
+                });
+
             Logger.LogInfo($"OnGameManagerAwake: Best buildings to purchase");
             BIZ_SEARCH_BUILDING_TYPES.ForEach(criteria =>
                 {
