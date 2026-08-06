@@ -43,9 +43,7 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_retail", 14),
         ("ba:buildingtype_warehouse", 15)
     ];
-
     internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
-
 
     internal static readonly float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.10f;
     internal static readonly float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
@@ -487,7 +485,7 @@ public class Plugin : BaseUnityPlugin
                 .Sum(slot => slot.GetDurationInHours) ?? 0;
             Logger.LogDebug($"OnLogisticsManagerPlanUILoadProducts: deliveryTargetAddress={planDestination.deliveryTargetAddress}, "
                 + $"customerCapacity={buildingRegistration.customerCapacity}, "
-                + $"dailyHours={dailyHours}"
+                + $"dailyHours={dailyHours}, "
                 + $"stockTargetsCount={planDestination.stockTargets.Count}");
 
             var itemCapacity = buildingRegistration.itemInstances.Values
@@ -502,7 +500,7 @@ public class Plugin : BaseUnityPlugin
                 .GroupBy(x => x.StockInstance.itemName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour * dailyHours));
+                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour * (dailyHours + 1)));
 
             itemCapacity.ToList()
                 .ForEach(entry =>
@@ -514,7 +512,23 @@ public class Plugin : BaseUnityPlugin
 
             if (BusinessTypeHelper.GetData(buildingRegistration).HasTag(TagRef.Businesstag.customersneedpaperbags))
             {
-                itemCapacity["ba:itemname_paperbag"] = itemCapacity.Values.Sum();
+                var pointOfSaleItems = buildingRegistration.itemInstances.Values
+                    .Where(itemInstance => (itemInstance.ItemCached.type & ItemType.PointOfSale) != 0)
+                    .Select(itemInstance => new
+                    {
+                        ItemInstance = itemInstance,
+                        StockInstance = itemInstance.GetStockInstance()
+                    })
+                    .ToList();
+
+                var pointOfSalePaperBagAmount = pointOfSaleItems.Sum(x => x.StockInstance.GetMaxStockCapacity(x.ItemInstance));
+                var firstPointOfSaleItem = pointOfSaleItems.FirstOrDefault();
+
+                if (firstPointOfSaleItem != null)
+                {
+                    itemCapacity[firstPointOfSaleItem.StockInstance.itemName] =
+                        Math.Max(itemCapacity.Values.Sum(), pointOfSalePaperBagAmount);
+                }
             }
 
             planDestination.stockTargets.Clear();
