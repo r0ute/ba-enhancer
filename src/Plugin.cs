@@ -531,23 +531,37 @@ public class Plugin : BaseUnityPlugin
         {
             Logger.LogDebug($"OnBusinessScrollerControllerPopulateAllModels: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
             SaveGameManager.Current.BuildingRegistrations
-                .Where(buildingRegistration =>
-                    (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
+                .Where(buildingRegistration => (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
                     || buildingRegistration.BuildingOwnedByPlayer)
-                .OrderBy(buildingRegistration => buildingRegistration.businessTypeName == "ba:businesstype_empty")
+                .OrderByDescending(GetBuildingCategory)
                 .ThenBy(buildingRegistration => buildingRegistration.businessTypeName)
                 .ThenBy(buildingRegistration => buildingRegistration.GetDisplayName())
                 .ToList()
                 .ForEach(buildingRegistration =>
                 {
-                    allModels.Add(
-                        buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration)
+                    allModels.Add(buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration)
                             ? new BusinessCellView.BusinessModel(buildingRegistration)
                             : new BusinessCellView.BusinessModel(buildingRegistration, isRealEstate: true)
                     );
                 });
 
             return false;
+        }
+
+        private static int GetBuildingCategory(BuildingRegistration buildingRegistration)
+        {
+            if (buildingRegistration.HasEstablishedBusiness)
+            {
+                return 1;
+            }
+            else if (buildingRegistration.BuildingOwnedByPlayer)
+            {
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
         }
 
         [HarmonyReversePatch]
