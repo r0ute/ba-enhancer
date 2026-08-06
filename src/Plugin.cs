@@ -46,6 +46,11 @@ public class Plugin : BaseUnityPlugin
 
     internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
 
+
+    internal static readonly float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.10f;
+    internal static readonly float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
+    internal static readonly float REAL_ESTATE_MAX_RENT_MULTIPLIER = 1.20f;
+
     internal static new ManualLogSource Logger;
 
     internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
@@ -61,6 +66,7 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll(typeof(GameManagerPatches));
         harmony.PatchAll(typeof(VehiclePatches));
         harmony.PatchAll(typeof(BizPatches));
+        harmony.PatchAll(typeof(RealEstatePatches));
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
     }
@@ -778,6 +784,43 @@ public class Plugin : BaseUnityPlugin
                 $"requiredWorkstations={requiredWorkstations}");
 
             inStock = existingWorkstations - requiredWorkstations;
+        }
+    }
+
+    class RealEstatePatches
+    {
+        [HarmonyPatch(typeof(RealEstateSettings), "OnEnable")]
+        [HarmonyPostfix]
+        static void OnRealEstateSettingsEnable(ref RealEstateSettings __instance)
+        {
+            Traverse traverse = Traverse.Create(__instance);
+            RealEstate realEstate = traverse.Field("_realEstate").GetValue<RealEstate>();
+            Slider rentSlider = traverse.Field("newRentSlider").GetValue<Slider>();
+
+            if (realEstate == null || rentSlider == null)
+            {
+                return;
+            }
+
+            float marketRent = realEstate.Building.GetBuildingDailyMarketRentPerSqm();
+            float minRent = marketRent * REAL_ESTATE_MIN_RENT_MULTIPLIER;
+            float maxRent = marketRent * REAL_ESTATE_MAX_RENT_MULTIPLIER;
+            float optimalRent = Mathf.Clamp(
+                    marketRent * REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER,
+                    minRent,
+                    maxRent
+                );
+
+            /*
+             * RealEstateSettings slider mapping:
+             *
+             * slider = 0 -> max rent
+             * slider = 1 -> min rent
+             *
+             * value = 1 - ((max - current) / range)
+             */
+            float sliderValue = 1f - ((maxRent - optimalRent) / (maxRent - minRent));
+            rentSlider.value = sliderValue;
         }
     }
 }
