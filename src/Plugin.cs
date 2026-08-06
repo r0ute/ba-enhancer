@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using AI.Citizens;
+using AI.Employees;
 using BepInEx;
 using BepInEx.Logging;
 using BigAmbitions.Items;
@@ -53,6 +54,11 @@ public class Plugin : BaseUnityPlugin
     internal static readonly float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
     internal static readonly float REAL_ESTATE_MAX_RENT_MULTIPLIER = 1.20f;
 
+    internal static readonly HashSet<string> EMPLOYEE_BLOCKED_MESSAGES =
+    [
+        "ba:messagetype_employee_contact_message_new_demand"
+    ];
+
     internal static new ManualLogSource Logger;
 
     internal static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
@@ -69,6 +75,7 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll(typeof(VehiclePatches));
         harmony.PatchAll(typeof(BizPatches));
         harmony.PatchAll(typeof(RealEstatePatches));
+        harmony.PatchAll(typeof(EmployeePatches));
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
     }
@@ -853,6 +860,21 @@ public class Plugin : BaseUnityPlugin
              */
             float sliderValue = 1f - ((maxRent - optimalRent) / (maxRent - minRent));
             rentSlider.value = sliderValue;
+        }
+    }
+
+    class EmployeePatches
+    {
+        [HarmonyPatch(typeof(EmployeeInstance), nameof(EmployeeInstance.SendMessage))]
+        [HarmonyPrefix]
+        static bool OnEmployeeInstanceSendMessage(string messageKey)
+        {
+            if (EMPLOYEE_BLOCKED_MESSAGES.Contains(messageKey) || ComplaintHelper.Complaints.Any(x => x.complaintMessageType == messageKey))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
