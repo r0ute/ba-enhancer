@@ -291,7 +291,7 @@ public class Plugin : BaseUnityPlugin
             __instance.Repair();
             return false;
         }
-        
+
 
     }
 
@@ -521,16 +521,15 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(BusinessScrollerController), "PopulateAllModels")]
         [HarmonyPrefix]
-        static bool OnBusinessScrollerControllerPopulateAllModels(ref BusinessScrollerController __instance,
-            List<BusinessCellView.BusinessModel> allModels)
+        static bool OnBusinessScrollerControllerPopulateAllModels(List<BusinessCellView.BusinessModel> allModels)
         {
             Logger.LogDebug($"OnBusinessScrollerControllerPopulateAllModels: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
             SaveGameManager.Current.BuildingRegistrations
                 .Where(buildingRegistration =>
                     (buildingRegistration.RentedByPlayer && IsVisibleBusiness(buildingRegistration))
                     || buildingRegistration.BuildingOwnedByPlayer)
-                .OrderByDescending(buildingRegistration =>
-                    buildingRegistration.businessTypeName == "ba:businesstype_empty" ? "" : buildingRegistration.businessTypeName)
+                .OrderBy(buildingRegistration => buildingRegistration.businessTypeName == "ba:businesstype_empty")
+                .ThenBy(buildingRegistration => buildingRegistration.businessTypeName)
                 .ThenBy(buildingRegistration => buildingRegistration.GetDisplayName())
                 .ToList()
                 .ForEach(buildingRegistration =>
@@ -542,7 +541,7 @@ public class Plugin : BaseUnityPlugin
                     );
                 });
 
-                return false;
+            return false;
         }
 
         [HarmonyReversePatch]
