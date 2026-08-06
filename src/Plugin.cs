@@ -275,6 +275,24 @@ public class Plugin : BaseUnityPlugin
 
         }
 
+        [HarmonyPatch(typeof(VehicleDeformationController), "OnCollisionEnter")]
+        [HarmonyPrefix]
+        static bool OnVehicleDeformationControllerCollisionEnter()
+        {
+            Logger.LogDebug($"OnVehicleDeformationControllerCollisionEnter");
+            return false;
+        }
+
+        [HarmonyPatch(typeof(CarController), "OnVehicleCollision", [])]
+        [HarmonyPrefix]
+        static bool OnCarControllerVehicleCollision(ref CarController __instance)
+        {
+            Logger.LogDebug($"OnCarControllerVehicleCollision");
+            __instance.Repair();
+            return false;
+        }
+        
+
     }
 
     class BizPatches
@@ -503,11 +521,9 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(BusinessScrollerController), "PopulateAllModels")]
         [HarmonyPrefix]
-        static void OnBusinessScrollerControllerPopulateAllModels(ref BusinessScrollerController __instance, ref bool __runOriginal,
+        static bool OnBusinessScrollerControllerPopulateAllModels(ref BusinessScrollerController __instance,
             List<BusinessCellView.BusinessModel> allModels)
         {
-            __runOriginal = false;
-
             Logger.LogDebug($"OnBusinessScrollerControllerPopulateAllModels: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
             SaveGameManager.Current.BuildingRegistrations
                 .Where(buildingRegistration =>
@@ -525,6 +541,8 @@ public class Plugin : BaseUnityPlugin
                             : new BusinessCellView.BusinessModel(buildingRegistration, isRealEstate: true)
                     );
                 });
+
+                return false;
         }
 
         [HarmonyReversePatch]
@@ -534,10 +552,8 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(WarehouseList), nameof(WarehouseList.Load))]
         [HarmonyPrefix]
-        static void OnWarehouseListLoad(WarehouseList __instance, ref bool __runOriginal)
+        static bool OnWarehouseListLoad(WarehouseList __instance)
         {
-            __runOriginal = false;
-
             Logger.LogDebug($"OnWarehouseListLoad: buildingRegistrationCount={SaveGameManager.Current.BuildingRegistrations.Count}");
             Traverse.Create(__instance).Field("warehouseEntry").GetValue<Transform>().ResetTemplate();
             SaveGameManager.Current.BuildingRegistrations
@@ -546,6 +562,8 @@ public class Plugin : BaseUnityPlugin
                 .Where(x => x.RentedByPlayer && x.GetBuildingType() == "ba:buildingtype_warehouse")
                 .ToList()
                 .ForEach(item => SetUpEntry(__instance, (Warehouse)item));
+
+            return false;
         }
 
 
@@ -621,7 +639,7 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(InventoryProductCellView), "UpdateAmountBackground")]
         [HarmonyPrefix]
-        static void OnInventoryProductCellViewUpdateAmountBackground(ref InventoryProductCellView __instance, ref bool __runOriginal)
+        static bool OnInventoryProductCellViewUpdateAmountBackground(ref InventoryProductCellView __instance)
         {
             var amountBackground = Traverse.Create(__instance).Field("_amountBackground").GetValue<Image>();
             var data = Traverse.Create(__instance).Field("_data").GetValue<InventoryProductCellView.InventoryProductModel>();
@@ -632,10 +650,11 @@ public class Plugin : BaseUnityPlugin
             if (retailPrice != 0f && Mathf.RoundToInt(retailPrice * 100) == Mathf.RoundToInt((lowestMarketPrice - 0.01f) * 100))
             {
                 amountBackground.color = InstanceBehavior<GlobalReferences>.Instance.colors.green;
-                __runOriginal = false;
 
-                return;
+                return false;
             }
+
+            return true;
         }
 
         [HarmonyPatch(typeof(InventoryProductCellView), "SetData")]
