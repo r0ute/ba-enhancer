@@ -45,7 +45,11 @@ public class Plugin : BaseUnityPlugin
     ];
     internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
 
-    internal static readonly float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.10f;
+    // Rent <=100%: no tenant loss;
+    // Rent >100%: adds 6.67% daily tenant loss chance;
+    // Rent >=120%: cannot gain tenants and only loses occupancy;
+    // Rent 105%-110%: tradeoff zone between higher revenue and occupancy risk (15%-10% daily gain chance, 6.67% daily loss chance).
+    internal static readonly float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.05f;
     internal static readonly float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
     internal static readonly float REAL_ESTATE_MAX_RENT_MULTIPLIER = 1.20f;
 
