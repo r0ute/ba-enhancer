@@ -34,7 +34,7 @@ public class Plugin : BaseUnityPlugin
 
     internal static readonly string VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
     internal static readonly List<string> VEHICLE_MISSING_TRUCK_IDS = [
-        "ba:vehicletype_umcdesert"
+        "ba:vehicletype_umcdesert",
     ];
 
     internal static readonly List<(string buildingType, int searchLimit)> BIZ_SEARCH_BUILDING_TYPES = [
@@ -42,11 +42,12 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_theater", 3),
         ("ba:buildingtype_office", 6),
         ("ba:buildingtype_retail", 14),
-        ("ba:buildingtype_warehouse", 15)
+        ("ba:buildingtype_warehouse", 15),
     ];
     internal static readonly Dictionary<string, int> BIZ_DELIVERY_CUSTOM_MULTIPLIERS = new()
     {
-        ["ba:itemname_haircareproduct"] = 2
+        ["ba:itemname_haircareproduct"] = 2,
+        ["ba:itemname_popcorn"] = 2,
     };
     internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
 
@@ -60,7 +61,7 @@ public class Plugin : BaseUnityPlugin
 
     internal static readonly HashSet<string> EMPLOYEE_BLOCKED_MESSAGES =
     [
-        "ba:messagetype_employee_contact_message_new_demand"
+        "ba:messagetype_employee_contact_message_new_demand",
     ];
 
     internal static new ManualLogSource Logger;
