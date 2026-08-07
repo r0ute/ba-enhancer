@@ -44,6 +44,10 @@ public class Plugin : BaseUnityPlugin
         ("ba:buildingtype_retail", 14),
         ("ba:buildingtype_warehouse", 15)
     ];
+    internal static readonly Dictionary<string, int> BIZ_DELIVERY_CUSTOM_MULTIPLIERS = new()
+    {
+        ["ba:itemname_haircareproduct"] = 2
+    };
     internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
 
     // Rent <=100%: no tenant loss;
@@ -419,7 +423,6 @@ public class Plugin : BaseUnityPlugin
                 }
                 else
                 {
-                    Logger.LogWarning($"OnPurchasingAgentPlanUIStartOrder: Unsupported building type: {warehouse.businessTypeName}");
                     return;
                 }
 
@@ -485,7 +488,13 @@ public class Plugin : BaseUnityPlugin
         {
             var buildingRegistration = BuildingHelper.GetBuildingRegistration(planDestination.deliveryTargetAddress);
 
-            if (buildingRegistration?.GetBuildingType() != "ba:buildingtype_retail")
+            List<string> validBuildingTypes = [
+                "ba:buildingtype_retail",
+                "ba:buildingtype_cinema",
+                "ba:buildingtype_theater"
+            ];
+
+            if (!validBuildingTypes.Contains(buildingRegistration?.GetBuildingType()))
             {
                 return;
             }
@@ -511,7 +520,9 @@ public class Plugin : BaseUnityPlugin
                 .GroupBy(x => x.StockInstance.itemName)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour * (dailyHours + 1)));
+                    group => group.Sum(x => x.ItemInstance.ItemCached.addedCustomersPerHour
+                        * (dailyHours + 1)
+                        * BIZ_DELIVERY_CUSTOM_MULTIPLIERS.GetValueOrDefault(group.Key, 1)));
 
             itemCapacity.ToList()
                 .ForEach(entry =>
