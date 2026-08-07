@@ -586,7 +586,10 @@ public class Plugin : BaseUnityPlugin
 
         private static int GetBuildingCategory(BuildingRegistration buildingRegistration)
         {
-            if (buildingRegistration.HasEstablishedBusiness)
+            if (buildingRegistration.RentedByPlayer
+                && buildingRegistration.HasEstablishedBusiness
+                && buildingRegistration.businessTypeName != "ba:businesstype_factory"
+                && buildingRegistration.businessTypeName != "ba:businesstype_warehouse")
             {
                 return 1;
             }
