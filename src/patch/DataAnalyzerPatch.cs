@@ -18,6 +18,16 @@ internal class DataAnalyzerPatch
     [HarmonyPostfix]
     static void OnGameManagerAwake()
     {
+
+        logNeighborhoodData();
+        logBusinessOpeningHours();
+        logProductsWithReducedDemand();
+        logBusinessMaxPurchaseAmountPerProduct();
+        logBestBuildingsToPurchase();
+    }
+
+    private static void logNeighborhoodData()
+    {
         Plugin.Logger.LogInfo($"OnGameManagerAwake: NeighborhoodsData");
         NeighborhoodHelper.NeighborhoodsData
             .ToList()
@@ -56,6 +66,10 @@ internal class DataAnalyzerPatch
                     + $"minTrafficFor100Promotion={minTrafficFor100Promotion}");
             });
 
+    }
+
+    private static void logBusinessOpeningHours()
+    {
         Plugin.Logger.LogInfo($"OnGameManagerAwake: Opening Hours");
         BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
             .ToList()
@@ -75,7 +89,10 @@ internal class DataAnalyzerPatch
                         + $"startingHour={hourlyFactorMultiplier.startingHour}, endingHour={hourlyFactorMultiplier.endingHour}, multiplier={hourlyFactorMultiplier.multiplier}");
                 });
             });
+    }
 
+    private static void logProductsWithReducedDemand()
+    {
         Plugin.Logger.LogInfo($"OnGameManagerAwake: Products with reduced demand");
         BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
             .Where(businessType => businessType.businessProducts.Any(product => product.impact < 1))
@@ -93,7 +110,10 @@ internal class DataAnalyzerPatch
                             + $"impact={product.impact}");
                     });
             });
+    }
 
+    private static void logBusinessMaxPurchaseAmountPerProduct()
+    {
         Plugin.Logger.LogInfo($"OnGameManagerAwake: Business max purchase amount per product");
         BusinessTypeHelper.GetAllPlayerAvailableBusinesses()
             .Where(businessType => businessType.maxAmountPerProduct > 1)
@@ -104,6 +124,10 @@ internal class DataAnalyzerPatch
             {
                 Plugin.Logger.LogDebug($"OnGameManagerAwake: businessType={businessType}, maxAmountPerProduct={businessType.maxAmountPerProduct}");
             });
+    }
+
+    private static void logBestBuildingsToPurchase()
+    {
 
         Plugin.Logger.LogInfo($"OnGameManagerAwake: Best buildings to purchase");
         Plugin.BIZ_SEARCH_BUILDING_TYPES.ForEach(criteria =>
