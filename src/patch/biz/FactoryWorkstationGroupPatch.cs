@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BA.src.patch.biz;
 
-internal class FactoryWorkstationPatch
+internal class FactoryWorkstationGroupPatch
 {
     [HarmonyPrefix]
     [HarmonyPatch(typeof(BizManFactoryWorkstationGroupModel), MethodType.Constructor,

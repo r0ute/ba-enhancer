@@ -63,7 +63,9 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll(typeof(BuildingPricePatch));
         harmony.PatchAll(typeof(BuildingRegistrationChangePatch));
         harmony.PatchAll(typeof(BusinessListPatch));
-        harmony.PatchAll(typeof(FactoryWorkstationPatch));
+        harmony.PatchAll(typeof(FactoryMachineListPatch));
+        harmony.PatchAll(typeof(FactoryWorkstationGroupPatch));
+
         harmony.PatchAll(typeof(LogisticsManagerPlanPatch));
         harmony.PatchAll(typeof(PurchasingAgentPlanPatch));
         harmony.PatchAll(typeof(WarehouseListPatch));
