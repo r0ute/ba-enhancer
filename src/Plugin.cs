@@ -49,7 +49,7 @@ public class Plugin : BaseUnityPlugin
 
     internal static new ManualLogSource Logger;
 
-    internal static HashSet<Address> bestBuildings = [];
+    internal static Dictionary<Address, int> bestBuildings = [];
 
     private void Awake()
     {

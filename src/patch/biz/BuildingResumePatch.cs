@@ -17,8 +17,14 @@ internal static class BuildingResumePatch
 
         Plugin.Logger.LogDebug($"OnBuildingResumeUpdateDetails: building={__instance.CityBuildingController.building.Address}");
 
-        __instance.addressLabel.TextContainer.color = Plugin.bestBuildings.Contains(__instance.CityBuildingController.building.Address)
-            ? Color.blue
-            : Color.black;
+        if (Plugin.bestBuildings.TryGetValue(__instance.CityBuildingController.building.Address, out int rank))
+        {
+            __instance.addressLabel.TextContainer.color = Color.blue;
+            __instance.addressLabel.TextContainer.text = $"#{rank} BEST {__instance.addressLabel.TextContainer.text}";
+        }
+        else
+        {
+            __instance.addressLabel.TextContainer.color = Color.black;
+        }
     }
 }

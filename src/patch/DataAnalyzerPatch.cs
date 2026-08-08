@@ -160,6 +160,12 @@ internal class DataAnalyzerPatch
             .SelectMany(group => group
                 .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
                 .ThenByDescending(entry => entry.Building.trafficIndex)
+                .Select((entry, index) => new
+                {
+                    entry.Neighbourhood,
+                    entry.Building,
+                    Rank = index + 1
+                })
                 .Take(searchLimit))
             .OrderBy(entry => entry.Neighbourhood)
             .ThenBy(entry => entry.Building.BuildingType)
@@ -167,7 +173,7 @@ internal class DataAnalyzerPatch
             .ForEach(entry =>
             {
                 var building = entry.Building;
-                Plugin.bestBuildings.Add(entry.Building.Address);
+                Plugin.bestBuildings[building.Address] = entry.Rank;
                 Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
                     + $"type={entry.Building.BuildingType}, "
                     + $"customerCapacity={building.GetCustomerCapacity}, "
@@ -198,6 +204,12 @@ internal class DataAnalyzerPatch
             .SelectMany(group => group
                 .OrderByDescending(entry => entry.Building.BuildingSize)
                 .ThenByDescending(entry => entry.Building.BuildingVersion)
+                .Select((entry, index) => new
+                {
+                    entry.Neighbourhood,
+                    entry.Building,
+                    Rank = index + 1
+                })
                 .Take(searchLimit))
             .OrderBy(entry => entry.Neighbourhood)
             .ThenBy(entry => entry.Building.BuildingType)
@@ -205,7 +217,7 @@ internal class DataAnalyzerPatch
             .ForEach(entry =>
             {
                 var building = entry.Building;
-                Plugin.bestBuildings.Add(entry.Building.Address);
+                Plugin.bestBuildings[building.Address] = entry.Rank;
                 Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
                     + $"type={entry.Building.BuildingType}, "
                     + $"size={building.BuildingSize}{building.BuildingVersion}, "

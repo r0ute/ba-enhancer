@@ -25,7 +25,7 @@ internal class BuildingAvailabilityNotificationPatch
 
     private static void CheckBestBuildingsAvailability()
     {
-        Plugin.bestBuildings
+        Plugin.bestBuildings.Keys
             .Select(BuildingHelper.GetBuildingRegistration)
             .Where(r => r != null)
             .Where(r => !r.BuildingOwnedByPlayer && !r.RentedByPlayer)
