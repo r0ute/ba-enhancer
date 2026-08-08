@@ -19,12 +19,7 @@ internal static class BuildingResumePatch
 
         if (Plugin.bestBuildings.TryGetValue(__instance.CityBuildingController.building.Address, out int rank))
         {
-            __instance.addressLabel.TextContainer.color = Color.blue;
-            __instance.addressLabel.TextContainer.text = $"#{rank} BEST {__instance.addressLabel.TextContainer.text}";
-        }
-        else
-        {
-            __instance.addressLabel.TextContainer.color = Color.black;
+            __instance.addressLabel.TextContainer.text = $"<color=#CC6600>#{rank} BEST</color> {__instance.addressLabel.TextContainer.text}";
         }
     }
 }
