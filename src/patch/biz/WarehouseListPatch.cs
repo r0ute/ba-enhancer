@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class WarehouseListPatch
 {
     [HarmonyPatch(typeof(WarehouseList), nameof(WarehouseList.Load))]

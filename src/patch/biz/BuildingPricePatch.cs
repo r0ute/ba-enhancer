@@ -6,6 +6,7 @@ using Helpers;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class BuildingPricePatch
 {
     [HarmonyPatch(typeof(BizManPresentation), nameof(BizManPresentation.SetAiOwned))]

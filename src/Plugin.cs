@@ -2,8 +2,6 @@
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using BA.src.patch;
-using BA.src.patch.biz;
 
 namespace BA.src;
 
@@ -59,23 +57,7 @@ public class Plugin : BaseUnityPlugin
         Logger = base.Logger;
 
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
-
-        harmony.PatchAll(typeof(BuildingPricePatch));
-        harmony.PatchAll(typeof(BuildingRegistrationChangePatch));
-        harmony.PatchAll(typeof(BusinessListPatch));
-        harmony.PatchAll(typeof(FactoryMachineListPatch));
-        harmony.PatchAll(typeof(FactoryWorkstationGroupPatch));
-
-        harmony.PatchAll(typeof(LogisticsManagerPlanPatch));
-        harmony.PatchAll(typeof(PurchasingAgentPlanPatch));
-        harmony.PatchAll(typeof(WarehouseListPatch));
-
-        harmony.PatchAll(typeof(DataAnalyzerPatch));
-        harmony.PatchAll(typeof(EmployeePatch));
-        harmony.PatchAll(typeof(InventoryProductPatch));
-        harmony.PatchAll(typeof(MarketDemandPatch));
-        harmony.PatchAll(typeof(RealEstatePatch));
-        harmony.PatchAll(typeof(VehiclePatch));
+        harmony.PatchAll();
 
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
     }

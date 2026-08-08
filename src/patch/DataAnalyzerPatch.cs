@@ -9,6 +9,7 @@ using UnityEngine.UIElements.Collections;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class DataAnalyzerPatch
 {
 
@@ -140,10 +141,12 @@ internal class DataAnalyzerPatch
     }
     private static void searchBuildings((string buildingType, int searchLimit) criteria)
     {
+        var (buildingType, searchLimit) = criteria;
+
         BuildingHelper.AllNeighbourhoodBuildings
             .SelectMany(neighbourhood => neighbourhood.Value
                 .Where(building => !building.SpecialService
-                    && criteria.buildingType.Equals(building.BuildingType))
+                    && building.BuildingType == buildingType)
                 .Select(building => new
                 {
                     Neighbourhood = neighbourhood.Key,
@@ -157,7 +160,7 @@ internal class DataAnalyzerPatch
             .SelectMany(group => group
                 .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
                 .ThenByDescending(entry => entry.Building.trafficIndex)
-                .Take(criteria.searchLimit))
+                .Take(searchLimit))
             .OrderBy(entry => entry.Neighbourhood)
             .ThenBy(entry => entry.Building.BuildingType)
             .ToList()
@@ -176,10 +179,12 @@ internal class DataAnalyzerPatch
 
     private static void searchWarehouses((string buildingType, int searchLimit) criteria)
     {
+        var (buildingType, searchLimit) = criteria;
+
         BuildingHelper.AllNeighbourhoodBuildings
             .SelectMany(neighbourhood => neighbourhood.Value
                 .Where(building => !building.SpecialService
-                    && criteria.buildingType.Equals(building.BuildingType))
+                    && building.BuildingType == buildingType)
                 .Select(building => new
                 {
                     Neighbourhood = neighbourhood.Key,
@@ -193,7 +198,7 @@ internal class DataAnalyzerPatch
             .SelectMany(group => group
                 .OrderByDescending(entry => entry.Building.BuildingSize)
                 .ThenByDescending(entry => entry.Building.BuildingVersion)
-                .Take(criteria.searchLimit))
+                .Take(searchLimit))
             .OrderBy(entry => entry.Neighbourhood)
             .ThenBy(entry => entry.Building.BuildingType)
             .ToList()

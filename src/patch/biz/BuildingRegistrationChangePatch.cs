@@ -7,6 +7,7 @@ using UI.Smartphone.Apps.Contacts;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class BuildingRegistrationChangePatch
 {
 

@@ -4,7 +4,7 @@ using UI.Smartphone.Apps.BizMan.Factory;
 
 namespace BA.src.patch.biz;
 
-
+[HarmonyPatch]
 public static class FactoryMachineListPatch
 {
 

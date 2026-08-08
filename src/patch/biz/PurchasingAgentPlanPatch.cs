@@ -5,6 +5,7 @@ using UI.Smartphone.Apps.BizMan.PurchasingAgent;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class PurchasingAgentPlanPatch
 {
     [HarmonyPatch(typeof(PurchasingAgentPlanUI), "StartOrder")]

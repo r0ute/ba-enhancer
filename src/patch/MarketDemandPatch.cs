@@ -4,6 +4,7 @@ using UI.Smartphone.Apps.MarketInsider;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class MarketDemandPatch
 {
     [HarmonyPatch(typeof(MarketDemandCellView), "SetData")]

@@ -8,6 +8,7 @@ using UnityEngine.UI;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class InventoryProductPatch
 {
 

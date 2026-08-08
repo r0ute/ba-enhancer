@@ -6,6 +6,7 @@ using UI.Smartphone.Apps.BizMan;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class BusinessListPatch
 {
     [HarmonyPatch(typeof(BusinessScrollerController), "PopulateAllModels")]

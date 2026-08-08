@@ -10,6 +10,7 @@ using UI.Smartphone.Apps.BizMan.LogisticsManagers;
 
 namespace BA.src.patch.biz;
 
+[HarmonyPatch]
 internal class LogisticsManagerPlanPatch
 {
     [HarmonyPatch(typeof(LogisticsManagerPlanUI), "LoadProducts")]

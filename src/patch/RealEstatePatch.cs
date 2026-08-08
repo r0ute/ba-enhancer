@@ -6,6 +6,7 @@ using UnityEngine.UI;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class RealEstatePatch
 {
     [HarmonyPatch(typeof(RealEstateSettings), "OnEnable")]

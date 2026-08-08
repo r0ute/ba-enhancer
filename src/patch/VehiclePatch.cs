@@ -7,6 +7,7 @@ using Helpers;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class VehiclePatch
 {
 

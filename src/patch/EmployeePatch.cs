@@ -5,6 +5,7 @@ using HarmonyLib;
 
 namespace BA.src.patch;
 
+[HarmonyPatch]
 internal class EmployeePatch
 {
     [HarmonyPatch(typeof(EmployeeInstance), nameof(EmployeeInstance.SendMessage))]
