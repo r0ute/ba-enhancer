@@ -41,6 +41,12 @@ public class Plugin : BaseUnityPlugin
     internal static readonly HashSet<string> EMPLOYEE_BLOCKED_MESSAGES =
     [
         "ba:messagetype_employee_contact_message_new_demand",
+        "ba:messagetype_headhunter_expected_completion_days_range",
+        "ba:messagetype_headhunter_expected_completion_1_day",
+        "ba:messagetype_employee_contact_message_quit",
+        "ba:messagetype_employee_contact_message_retire",
+        "ba:messagetype_employee_contact_message_retirement_notice",
+        "ba:messagetype_employee_contact_message_low_satisfaction",
     ];
 
     internal static new ManualLogSource Logger;
