@@ -20,34 +20,27 @@ internal class BizManSchedulePatch
             return;
         }
 
-
-
-        Plugin.Logger.LogDebug($"OnBizManScheduleLoadScheduler: businessName={ScheduleHelper.Business.buildingRegistration.BusinessName}");
+        Plugin.Logger.LogInfo($"OnBizManScheduleLoadScheduler: businessName={ScheduleHelper.Business.buildingRegistration.BusinessName}");
         var registration = ScheduleHelper.Business.buildingRegistration;
-
 
         int weeklyOpenHours = registration.scheduleDays
             .Where(day => day.isOpen)
             .Sum(day => day.openingHourSlots
                 .Sum(slot => slot.endingHour - slot.startingHour));
 
-
         var requiredEmployees = registration.itemInstances.Values
             .Where(item => item.ItemCached.suitableSkills != null)
             .SelectMany(item => item.ItemCached.suitableSkills
                 .Select(skill => new
                 {
-                    Skill = skill,
-                    Hours = weeklyOpenHours
+                    skill,
+                    hours = weeklyOpenHours
                 }))
-            .GroupBy(x => x.Skill)
+            .GroupBy(x => x.skill)
             .Select(group => new
             {
-                Skill = group.Key,
-                Required = Mathf.CeilToInt(
-                    group.Sum(x => x.Hours)
-                    /
-                    (float)MAX_WEEKLY_HOURS_PER_EMPLOYEE)
+                skill = group.Key,
+                required = Mathf.CeilToInt(group.Sum(x => x.hours) / (float)MAX_WEEKLY_HOURS_PER_EMPLOYEE)
             });
 
 
@@ -57,22 +50,24 @@ internal class BizManSchedulePatch
                     withAssignedAddress = registration.Address
                 })
             .GroupBy(employee => employee.GetPrimarySkill())
-            .ToDictionary(
-                group => group.Key,
-                group => group.Count());
+            .ToDictionary(group => group.Key, group => group.Count());
 
+        requiredEmployees.Select(requirement =>
+            {
+                assignedEmployees.TryGetValue(requirement.skill, out var assigned);
 
-        foreach (var requirement in requiredEmployees)
-        {
-            assignedEmployees.TryGetValue(
-                requirement.Skill,
-                out int assigned);
-
-            Plugin.Logger.LogInfo(
-                $"OnBizManScheduleLoadScheduler: " +
-                $"businessName={registration.BusinessName}, " +
-                $"employeeType={requirement.Skill}, " +
-                $"employeeCount={assigned}/{requirement.Required}");
-        }
+                return new
+                {
+                    requirement.skill,
+                    requirement.required,
+                    assigned
+                };
+            })
+            .ToList()
+            .ForEach(result =>
+            {
+                Plugin.Logger.LogDebug($"OnBizManScheduleLoadScheduler: employeeType={result.skill}, " +
+                    $"employeeCount={result.assigned}/{result.required}");
+            });
     }
 }
