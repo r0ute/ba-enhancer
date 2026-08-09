@@ -18,7 +18,7 @@ internal class BuildingResumePatch
 
         if (Plugin.bestBuildings.TryGetValue(__instance.CityBuildingController.building.Address, out int rank))
         {
-            __instance.addressLabel.TextContainer.text = $"<color=#CC6600>#{rank} BEST</color> {__instance.addressLabel.TextContainer.text}";
+            __instance.addressLabel.TextContainer.text = $"<color={Plugin.BIZ_BEST_BUILDING_COLOR}>#{rank} BEST</color> {__instance.addressLabel.TextContainer.text}";
         }
     }
 }

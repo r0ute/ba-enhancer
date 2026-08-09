@@ -28,7 +28,7 @@ internal class MarketDemandPatch
 
         if (lowestMarketPrice != null)
         {
-            lowestMarketPrice.text += $" {Plugin.BIZ_PLAYER_MONOPOLY_INDICATOR}";
+            lowestMarketPrice.text += $" <color={Plugin.BIZ_PLAYER_MONOPOLY_COLOR}>[M]</color>";
         }
     }
 }

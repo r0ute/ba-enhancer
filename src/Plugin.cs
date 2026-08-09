@@ -9,7 +9,7 @@ namespace BA.src;
 public class Plugin : BaseUnityPlugin
 {
 
-    internal static readonly string VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
+    internal const string VEHICLE_TRUCKS_DEALERSHIP_LAYOUT_ID = "industrycitycardealershiptrucks";
     internal static readonly List<string> VEHICLE_MISSING_TRUCK_IDS = [
         "ba:vehicletype_umcdesert",
     ];
@@ -26,15 +26,17 @@ public class Plugin : BaseUnityPlugin
         ["ba:itemname_haircareproduct"] = 2,
         ["ba:itemname_popcorn"] = 2,
     };
-    internal static readonly string BIZ_PLAYER_MONOPOLY_INDICATOR = "(!)";
+    internal const string BIZ_PLAYER_MONOPOLY_COLOR = "#FAB44B";
+
+    internal const string BIZ_BEST_BUILDING_COLOR = "#CC6600";
 
     // Rent <=100%: no tenant loss;
     // Rent >100%: adds 6.67% daily tenant loss chance;
     // Rent >=120%: cannot gain tenants and only loses occupancy;
     // Rent 105%-110%: tradeoff zone between higher revenue and occupancy risk (15%-10% daily gain chance, 6.67% daily loss chance).
-    internal static readonly float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.05f;
-    internal static readonly float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
-    internal static readonly float REAL_ESTATE_MAX_RENT_MULTIPLIER = 1.20f;
+    internal const float REAL_ESTATE_OPTIMAL_RENT_MULTIPLIER = 1.05f;
+    internal const float REAL_ESTATE_MIN_RENT_MULTIPLIER = 0.80f;
+    internal const float REAL_ESTATE_MAX_RENT_MULTIPLIER = 1.20f;
 
     internal static readonly HashSet<string> EMPLOYEE_BLOCKED_MESSAGES =
     [
