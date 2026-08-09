@@ -210,15 +210,24 @@ internal class DataAnalyzerPatch
             })
             .SelectMany(group =>
             {
-                var ranked = sortSelector(group).ToList();
+                var rank = 0;
+                BuildingEntry previous = null;
 
-                return ranked.Select((entry, index) => new
-                {
-                    Entry = entry,
-                    Rank = ranked.Take(index)
-                        .Count(x => !rankSelector(x, entry)) + 1
-                })
-                .Take(searchLimit);
+                return sortSelector(group)
+                    .Take(searchLimit)
+                    .Select(entry =>
+                    {
+                        if (previous == null || !rankSelector(previous, entry))
+                            rank++;
+
+                        previous = entry;
+
+                        return new
+                        {
+                            Entry = entry,
+                            Rank = rank
+                        };
+                    });
             })
             .OrderBy(entry => entry.Entry.Neighbourhood)
             .ThenBy(entry => entry.Entry.Building.BuildingType)
