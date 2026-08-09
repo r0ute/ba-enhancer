@@ -69,7 +69,7 @@ internal class BizManSchedulePatch
 
         {
             var message = $"OnBizManScheduleLoadScheduler: employeeType={result.skill}, "
-                + $"employeeCount={result.assigned}/{result.required}";
+                + $"employeeCount={result.assigned}/{result.required}, diff={result.required - result.assigned}";
 
             if (result.assigned != result.required)
             {
@@ -82,28 +82,32 @@ internal class BizManSchedulePatch
 
         });
 
-        var missingWorkSlots = registration.scheduleDays
+        var missingSlots = registration.scheduleDays
             .Where(day => day.isOpen)
-            .SelectMany(day => day.openingHourSlots
-                .SelectMany(slot => Enumerable.Range(
-                    slot.startingHour,
-                    slot.endingHour - slot.startingHour)
+            .SelectMany(day => day.openingHourSlots.SelectMany(slot =>
+                Enumerable.Range(slot.startingHour, slot.endingHour - slot.startingHour)
                     .Select(hour => new
                     {
                         day,
                         hour
                     })))
-            .Any(x =>
-                ScheduleHelper.WorkstationsById.Values
-                    .Where(item => item != null)
-                    .Any(workstation =>
-                        !x.day.workShifts.Any(shift =>
-                            shift.itemInstanceId == workstation.id &&
-                            shift.startingHour <= x.hour &&
-                            shift.endingHour > x.hour)));
+            .SelectMany(x => registration.itemInstances.Values
+                .Where(item => item.ItemCached.assignable)
+                .Where(item => !item.IsCleaningStation() ||
+                    item.ItemCached.suitableSkills.Contains("ba:skill_cleaning"))
+                .Where(item => !x.day.workShifts.Any(shift =>
+                    shift.itemInstanceId == item.id &&
+                    shift.startingHour <= x.hour &&
+                    shift.endingHour > x.hour))
+                .Select(item => new
+                {
+                    item,
+                    x.day,
+                    x.hour
+                }));
 
 
-        if (missingWorkSlots)
+        if (missingSlots.Any())
         {
             Plugin.Logger.LogWarning(
                 $"OnBizManScheduleLoadScheduler: Missing slots: businessName={registration.BusinessName}");
