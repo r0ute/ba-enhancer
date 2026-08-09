@@ -28,19 +28,20 @@ internal class BizManSchedulePatch
             .Sum(day => day.openingHourSlots
                 .Sum(slot => slot.endingHour - slot.startingHour));
 
+        var businessSkills = BusinessTypeHelper
+            .GetData(registration.businessTypeName)
+            .employeePrimarySkills
+            .ToHashSet();
+
         var requiredEmployees = registration.itemInstances.Values
-            .Where(item => item.ItemCached.suitableSkills != null)
-            .SelectMany(item => item.ItemCached.suitableSkills
-                .Select(skill => new
-                {
-                    skill,
-                    hours = weeklyOpenHours
-                }))
-            .GroupBy(x => x.skill)
+            .Where(item => item.ItemCached.assignable)
+            .SelectMany(item => item.ItemCached.suitableSkills ?? Enumerable.Empty<string>())
+            .Where(skill => businessSkills.Contains(skill) || skill == "ba:skill_cleaning")
+            .GroupBy(skill => skill)
             .Select(group => new
             {
                 skill = group.Key,
-                required = Mathf.CeilToInt(group.Sum(x => x.hours) / (float)MAX_WEEKLY_HOURS_PER_EMPLOYEE)
+                required = Mathf.CeilToInt(group.Count() * weeklyOpenHours / (float)MAX_WEEKLY_HOURS_PER_EMPLOYEE)
             });
 
 
