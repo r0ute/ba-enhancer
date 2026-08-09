@@ -21,7 +21,7 @@ internal class DataAnalyzerPatch
         public Building Building;
     }
 
-    private static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
+    private static readonly Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
 
     [HarmonyPatch(typeof(GameManager), "Awake")]
     [HarmonyPostfix]
