@@ -17,9 +17,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,12 +41,33 @@ jobs:
       - name: Test
         run: dotnet test --no-build --verbosity normal
 
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.BA_ASSEMBLIES_ACCESS }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
       - name: Publish
-        if: startsWith(github.ref, 'refs/tags/')
         run: dotnet publish -c Release --no-restore
 
       - name: Package
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           cd bin/Release/$TARGET_FRAMEWORK/publish/
           mkdir -p $PLUGIN_DIR
@@ -59,6 +77,5 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: ${{ env.file_name }}
