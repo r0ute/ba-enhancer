@@ -66,9 +66,47 @@ internal class BizManSchedulePatch
             })
             .ToList()
             .ForEach(result =>
+
+        {
+            var message = $"OnBizManScheduleLoadScheduler: employeeType={result.skill}, "
+                + $"employeeCount={result.assigned}/{result.required}";
+
+            if (result.assigned != result.required)
             {
-                Plugin.Logger.LogDebug($"OnBizManScheduleLoadScheduler: employeeType={result.skill}, " +
-                    $"employeeCount={result.assigned}/{result.required}");
-            });
+                Plugin.Logger.LogWarning(message);
+            }
+            else
+            {
+                Plugin.Logger.LogDebug(message);
+            }
+
+        });
+
+        var missingWorkSlots = registration.scheduleDays
+            .Where(day => day.isOpen)
+            .SelectMany(day => day.openingHourSlots
+                .SelectMany(slot => Enumerable.Range(
+                    slot.startingHour,
+                    slot.endingHour - slot.startingHour)
+                    .Select(hour => new
+                    {
+                        day,
+                        hour
+                    })))
+            .Any(x =>
+                ScheduleHelper.WorkstationsById.Values
+                    .Where(item => item != null)
+                    .Any(workstation =>
+                        !x.day.workShifts.Any(shift =>
+                            shift.itemInstanceId == workstation.id &&
+                            shift.startingHour <= x.hour &&
+                            shift.endingHour > x.hour)));
+
+
+        if (missingWorkSlots)
+        {
+            Plugin.Logger.LogWarning(
+                $"OnBizManScheduleLoadScheduler: Missing slots: businessName={registration.BusinessName}");
+        }
     }
 }
