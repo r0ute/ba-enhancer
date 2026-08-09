@@ -366,6 +366,7 @@ dotnet_naming_style.s_camelcase.capitalization = camel_case
 dotnet_diagnostic.IDE0055.severity = error
 
 [/obj/**]
+generated_code = true
 charset = unset
 end_of_line = unset
 insert_final_newline = unset
