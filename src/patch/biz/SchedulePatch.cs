@@ -69,7 +69,7 @@ internal class BizManSchedulePatch
 
         {
             var message = $"OnBizManScheduleLoadScheduler: employeeType={result.skill}, "
-                + $"employeeCount={result.assigned}/{result.required}, diff={result.required - result.assigned}";
+                + $"missing={result.required - result.assigned}({result.assigned}/{result.required})";
 
             if (result.assigned != result.required)
             {
