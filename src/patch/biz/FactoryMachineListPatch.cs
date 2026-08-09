@@ -5,12 +5,12 @@ using UI.Smartphone.Apps.BizMan.Factory;
 namespace BA.src.patch.biz;
 
 [HarmonyPatch]
-public static class FactoryMachineListPatch
+internal class FactoryMachineListPatch
 {
 
     [HarmonyPatch(typeof(BizManFactoryMachineList), "FetchData")]
     [HarmonyPostfix]
-    private static void OnBizManFactoryMachineListFetchData(BizManFactoryMachineList __instance)
+    static void OnBizManFactoryMachineListFetchData(BizManFactoryMachineList __instance)
     {
         BuildingRegistration registration =
             Traverse.Create(__instance)

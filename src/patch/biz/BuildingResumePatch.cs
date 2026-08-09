@@ -5,12 +5,12 @@ using UnityEngine;
 namespace BA.src.patch.biz;
 
 [HarmonyPatch]
-internal static class BuildingResumePatch
+internal class BuildingResumePatch
 {
 
     [HarmonyPatch(typeof(BuildingResume), "UpdateDetails")]
     [HarmonyPostfix]
-    private static void OnBuildingResumeUpdateDetails(ref BuildingResume __instance)
+    static void OnBuildingResumeUpdateDetails(ref BuildingResume __instance)
     {
         if (__instance.CityBuildingController?.building == null)
             return;
