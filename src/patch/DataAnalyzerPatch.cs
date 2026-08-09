@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AI.Citizens;
 using BigAmbitions.Items;
+using Buildings;
 using HarmonyLib;
 using Helpers;
 using UnityEngine;
@@ -12,6 +14,12 @@ namespace BA.src.patch;
 [HarmonyPatch]
 internal class DataAnalyzerPatch
 {
+
+    private class BuildingEntry
+    {
+        public string Neighbourhood;
+        public Building Building;
+    }
 
     private static Dictionary<string, int> neighborhoodMinTrafficFor100Promotion = [];
 
@@ -141,49 +149,48 @@ internal class DataAnalyzerPatch
     }
     private static void searchBuildings((string buildingType, int searchLimit) criteria)
     {
-        var (buildingType, searchLimit) = criteria;
-
-        BuildingHelper.AllNeighbourhoodBuildings
-            .SelectMany(neighbourhood => neighbourhood.Value
-                .Where(building => !building.SpecialService
-                    && building.BuildingType == buildingType)
-                .Select(building => new
-                {
-                    Neighbourhood = neighbourhood.Key,
-                    Building = building
-                }))
-            .GroupBy(entry => new
-            {
-                entry.Neighbourhood,
-                entry.Building.BuildingType
-            })
-            .SelectMany(group => group
-                .OrderByDescending(entry => entry.Building.GetCustomerCapacity)
-                .ThenByDescending(entry => entry.Building.trafficIndex)
-                .Select((entry, index) => new
-                {
-                    entry.Neighbourhood,
-                    entry.Building,
-                    Rank = index + 1
-                })
-                .Take(searchLimit))
-            .OrderBy(entry => entry.Neighbourhood)
-            .ThenBy(entry => entry.Building.BuildingType)
-            .ToList()
-            .ForEach(entry =>
-            {
-                var building = entry.Building;
-                Plugin.bestBuildings[building.Address] = entry.Rank;
-                Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
-                    + $"type={entry.Building.BuildingType}, "
-                    + $"customerCapacity={building.GetCustomerCapacity}, "
-                    + $"trafficIndex={building.trafficIndex}, "
-                    + $"100Promotion={building.trafficIndex >= neighborhoodMinTrafficFor100Promotion.Get(entry.Neighbourhood)}, "
-                    + $"address={building.Address}");
-            });
+        SearchBuildings(
+        criteria,
+        group => group.OrderByDescending(x => x.Building.GetCustomerCapacity)
+            .ThenByDescending(x => x.Building.trafficIndex),
+        (a, b) => a.Building.GetCustomerCapacity == b.Building.GetCustomerCapacity
+            && a.Building.trafficIndex == b.Building.trafficIndex,
+        (entry, rank) =>
+        {
+            var building = entry.Building;
+            Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
+                + $"type={entry.Building.BuildingType}, "
+                + $"customerCapacity={building.GetCustomerCapacity}, "
+                + $"trafficIndex={building.trafficIndex}, "
+                + $"rank={rank}, "
+                + $"100Promotion={building.trafficIndex >= neighborhoodMinTrafficFor100Promotion.Get(entry.Neighbourhood)}, "
+                + $"address={building.Address}");
+        });
     }
 
     private static void searchWarehouses((string buildingType, int searchLimit) criteria)
+    {
+        SearchBuildings(
+        criteria,
+        group => group.OrderByDescending(x => x.Building.BuildingSize)
+            .ThenByDescending(x => x.Building.BuildingVersion),
+        (a, b) => a.Building.BuildingSize == b.Building.BuildingSize
+            && a.Building.BuildingVersion == b.Building.BuildingVersion,
+        (entry, rank) =>
+        {
+            var building = entry.Building;
+            Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
+                + $"type={entry.Building.BuildingType}, "
+                + $"size={building.BuildingSize}{building.BuildingVersion}, "
+                + $"rank={rank}, "
+                + $"address={building.Address}");
+        });
+    }
+
+    private static void SearchBuildings((string buildingType, int searchLimit) criteria,
+        Func<IEnumerable<BuildingEntry>, IOrderedEnumerable<BuildingEntry>> sortSelector,
+        Func<BuildingEntry, BuildingEntry, bool> rankSelector,
+        Action<BuildingEntry, int> logAction)
     {
         var (buildingType, searchLimit) = criteria;
 
@@ -191,7 +198,7 @@ internal class DataAnalyzerPatch
             .SelectMany(neighbourhood => neighbourhood.Value
                 .Where(building => !building.SpecialService
                     && building.BuildingType == buildingType)
-                .Select(building => new
+                .Select(building => new BuildingEntry
                 {
                     Neighbourhood = neighbourhood.Key,
                     Building = building
@@ -201,27 +208,25 @@ internal class DataAnalyzerPatch
                 entry.Neighbourhood,
                 entry.Building.BuildingType
             })
-            .SelectMany(group => group
-                .OrderByDescending(entry => entry.Building.BuildingSize)
-                .ThenByDescending(entry => entry.Building.BuildingVersion)
-                .Select((entry, index) => new
+            .SelectMany(group =>
+            {
+                var ranked = sortSelector(group).ToList();
+
+                return ranked.Select((entry, index) => new
                 {
-                    entry.Neighbourhood,
-                    entry.Building,
-                    Rank = index + 1
+                    Entry = entry,
+                    Rank = ranked.Take(index)
+                        .Count(x => !rankSelector(x, entry)) + 1
                 })
-                .Take(searchLimit))
-            .OrderBy(entry => entry.Neighbourhood)
-            .ThenBy(entry => entry.Building.BuildingType)
+                .Take(searchLimit);
+            })
+            .OrderBy(entry => entry.Entry.Neighbourhood)
+            .ThenBy(entry => entry.Entry.Building.BuildingType)
             .ToList()
             .ForEach(entry =>
             {
-                var building = entry.Building;
-                Plugin.bestBuildings[building.Address] = entry.Rank;
-                Plugin.Logger.LogDebug($"OnGameManagerAwake: neighborhood={entry.Neighbourhood}, "
-                    + $"type={entry.Building.BuildingType}, "
-                    + $"size={building.BuildingSize}{building.BuildingVersion}, "
-                    + $"address={building.Address}");
+                Plugin.bestBuildings[entry.Entry.Building.Address] = entry.Rank;
+                logAction(entry.Entry, entry.Rank);
             });
     }
 }
